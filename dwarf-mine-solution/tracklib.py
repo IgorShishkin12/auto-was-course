@@ -772,7 +772,14 @@ def build_polyline(fit, tracked):
 GATE_LAT = 0.55
 GATE_ZBOT = 0.36
 GATE_ZTOP = 1.15
-GATE_XCAP = 12.0
+GATE_XCAP = 13.0
+# v2 tiers (offline val S=0.36144): near-low band for low objects,
+# far tier for mid-range recall
+GATE_XNEAR = 7.0
+GATE_ZLOW = 0.18
+GATE_XFAR1 = 15.0
+GATE_LATFAR = 0.35
+GATE_ZBFAR = 0.55
 CLIP_MIN = 15
 # near confirmation: clip also needs >= CONFIRM_N points at X <= CONFIRM_X
 CONFIRM_X = 11.0
@@ -850,9 +857,21 @@ def predict_mask(p, zb_bias=-0.02):
     n = np.hypot(tx, ty) + 1e-12
     lat = (-(p[:, 0] - Xp[j]) * ty + (p[:, 1] - Yp[j]) * tx) / n
     zb = Zp[j] + zb_bias
-    inside = (np.abs(lat) <= GATE_LAT + 1e-9) & \
-        (p[:, 2] >= zb + GATE_ZBOT - 1e-9) & (p[:, 2] <= zb + GATE_ZTOP + 1e-9)
-    # only forward points within range cap
-    inside = inside & (p[:, 0] > -1.0) & (p[:, 0] <= GATE_XCAP)
+    zrel = p[:, 2] - zb
+    alat = np.abs(lat)
+    X = p[:, 0]
+    # tier 1: base box (must match offline_search.score exactly)
+    inside = (alat <= GATE_LAT + 1e-9) & \
+        (zrel >= GATE_ZBOT - 1e-9) & (zrel <= GATE_ZTOP + 1e-9) & \
+        (X > -1.0) & (X <= GATE_XCAP + 1e-9)
+    # tier 2: near-low band (low objects, rails excluded by ZLOW)
+    inside = inside | ((X <= GATE_XNEAR + 1e-9) & (alat <= GATE_LAT + 1e-9) &
+                       (zrel >= GATE_ZLOW - 1e-9) & (zrel <= GATE_ZTOP + 1e-9) &
+                       (X > -1.0))
+    # tier 3: far tier (mid-range recall, tight lat/high zbot)
+    inside = inside | ((X > GATE_XCAP + 1e-9) & (X <= GATE_XFAR1 + 1e-9) &
+                       (alat <= GATE_LATFAR + 1e-9) &
+                       (zrel >= GATE_ZBFAR - 1e-9) &
+                       (zrel <= GATE_ZTOP + 1e-9))
     info.update(fit)
     return inside.astype(np.uint8), info
