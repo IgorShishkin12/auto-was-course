@@ -1,0 +1,7 @@
+# local data, never commit
+train/
+val/
+test/
+*.zip
+download.log
+__pycache__/
