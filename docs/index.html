@@ -43,7 +43,7 @@ footer{border-top:1px solid var(--line);padding:24px;color:#6e7681;font-size:13p
 <h1>YDS CTF — writeups</h1>
 <p class="sub">Solutions for the is-course.ru competition: web, crypto, reverse, forensics and mobile.
 Every writeup documents the vulnerability, the exploit and the fix. <b>Flags are intentionally omitted.</b></p>
-<div class="stats"><span class="pill"><b>18</b> writeups</span>
+<div class="stats"><span class="pill"><b>21</b> writeups</span>
 <span class="pill"><b>6</b> categories</span>
 <span class="pill">self-contained · no trackers</span></div></div></header>
 <div class="grid"><a class="card" href="web/authenticator.html">
@@ -73,12 +73,20 @@ backend runs through a shell. command it</p>
 <p>Recon
 Only /, /login, /logout exist; /register is a stub. Valid creds: test:test.
 After login the app sets</p>
-<div class="meta">pillar.is-course.ru</div></a><a class="card" href="web/xxe-medium.html">
+<div class="meta">pillar.is-course.ru</div></a><a class="card" href="web/gorilla-securecookie.html">
+<div class="cat">Web</div><h3>Reading (and attacking) gorilla/securecookie sessions</h3>
+<p>Several challenges on this course run the same Go/Echo + gorilla/sessions skeleton, so it is worth
+knowing the cookie format cold.</p>
+<div class="meta"></div></a><a class="card" href="web/xxe-medium.html">
 <div class="cat">Web</div><h3>XXE (medium) — out-of-band exfiltration</h3>
 <p>Recon
 The &quot;vegan.docx checker&quot; unzips an uploaded OOXML file and parses word/document.xml with an XML
 parser that resolves external entities</p>
-<div class="meta">xxe-medium.is-course.ru</div></a><a class="card" href="crypto/aes-ecb.html">
+<div class="meta">xxe-medium.is-course.ru</div></a><a class="card" href="web/cats-open.html">
+<div class="cat">Web</div><h3>cats — CSPRNG session, robots and dead ends (open)</h3>
+<p>This challenge is not solved. The page documents the full analysis, the falsified hypotheses and
+ the exact blocker, because negative result</p>
+<div class="meta">cats.is-course.ru</div></a><a class="card" href="crypto/aes-ecb.html">
 <div class="cat">Crypto</div><h3>AES ECB — byte-at-a-time</h3>
 <p>Oracle
 
@@ -134,7 +142,10 @@ to mario.iscourse.ru. Nothing in c</p>
 <div class="cat">Mobile</div><h3>Android WebView series (5 tasks)</h3>
 <p>One APK (com.yandex.shad.homework, minSdk 30, targetSdk 34) contains all five challenges as separate
 activities. The manifest alone gives th</p>
-<div class="meta">app-release.apk (com.yandex.shad.homework)</div></a><a class="card" href="misc/superprivate.html">
+<div class="meta">app-release.apk (com.yandex.shad.homework)</div></a><a class="card" href="misc/methodology.html">
+<div class="cat">Misc</div><h3>Methodology — how these challenges were approached</h3>
+<p>A short, honest description of the loop that produced the writeups in this repo.</p>
+<div class="meta"></div></a><a class="card" href="misc/superprivate.html">
 <div class="cat">Misc</div><h3>SuperPrivate — exported activity, local exploit</h3>
 <p>Recon
 The manifest contains com.yandex.shad.homework.features.SuperPrivateActivity — &quot;super private&quot;. Two
