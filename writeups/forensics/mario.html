@@ -248,7 +248,7 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics" class="on">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#forensics">Forensics</a></div><h1>Mario — pcap + TLS keylog via LFI</h1><p class="tags"><span class="tag">pcap</span><span class="tag">tls-1.2</span><span class="tag">lfi</span><span class="tag">sslkeylog</span><span class="tag">aes-gcm</span></p><div class="artmeta"><span>mario.is-course.ru</span><span>1 min read</span><span>274 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#two-halves">Two halves</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics" class="on">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#forensics">Forensics</a></div><h1>Mario — pcap + TLS keylog via LFI</h1><p class="tags"><span class="tag">pcap</span><span class="tag">tls-1.2</span><span class="tag">lfi</span><span class="tag">sslkeylog</span><span class="tag">aes-gcm</span></p><div class="artmeta"><span>mario.is-course.ru</span><span>2 min read</span><span>495 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#two-halves">Two halves</a></li>
 <li><a href="#getting-the-key-material">Getting the key material</a></li>
 <li><a href="#deriving-the-traffic-keys">Deriving the traffic keys</a></li>
 <li><a href="#decrypting">Decrypting</a></li>
@@ -283,6 +283,31 @@ one in the pcap (<code>client_random c6b4081b0dd339fe...</code> → master <code
 <p>Each record's nonce is <code>fixed_iv(4) || explicit_nonce(8)</code> taken from the record header, and the AAD is
 <code>seq_num(8) || type(1) || version(2) || length(2)</code> — the sequence number is what makes a replayed or
 out-of-order record fail to decrypt, and it is the usual reason a home-made decryptor "almost works".</p>
+<p><svg viewBox="0 0 760 180" width="100%" role="img" aria-label="mario attack chain">
+<g font-family="ui-monospace,monospace" font-size="11.5">
+  <g fill="#141a23" stroke="#232c3a">
+    <rect x="0" y="40" width="150" height="54" rx="9"/>
+    <rect x="170" y="40" width="150" height="54" rx="9"/>
+    <rect x="340" y="40" width="150" height="54" rx="9"/>
+    <rect x="510" y="40" width="120" height="54" rx="9"/>
+    <rect x="650" y="40" width="100" height="54" rx="9"/>
+  </g>
+  <g fill="#e6edf3">
+    <text x="12" y="60">theme cookie</text><text x="12" y="78" fill="#6e7681">../../etc/nginx/…</text>
+    <text x="182" y="60">path traversal</text><text x="182" y="78" fill="#6e7681">LFI in &lt;style&gt;</text>
+    <text x="352" y="60">nginx.conf</text><text x="352" y="78" fill="#6e7681">sslkeylog path</text>
+    <text x="522" y="60">sslkeys.log</text><text x="522" y="78" fill="#6e7681">CLIENT_RANDOM</text>
+    <text x="662" y="60">pcap</text><text x="662" y="78" fill="#6e7681">decrypted</text>
+  </g>
+  <g stroke="#7ee787" fill="none" marker-end="url(#a)">
+    <path d="M150 67 H168"/><path d="M320 67 H338"/><path d="M490 67 H508"/><path d="M630 67 H648"/>
+  </g>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0 0 L8 4 L0 8 z" fill="#7ee787"/></marker></defs>
+  <text x="0" y="24" fill="#7ee787" font-size="11.5">the web app is the key escrow for a capture that is otherwise unbreakable</text>
+  <text x="0" y="130" fill="#8b949e">master secret → PRF(SHA-384) → client/server keys → AES-256-GCM records → GET /flag?action=…</text>
+  <text x="0" y="152" fill="#8b949e">same LFI also read /app/flag.txt, which only said "decrypt pcap" — the actual hint chain.</text>
+</g></svg></p>
 <h2 id="decrypting" id="decrypting">Decrypting</h2>
 <p><code>decrypt.py</code> implements the TLS 1.2 PRF (SHA-384) and AES-256-GCM record decryption, rebuilding the
 per-record nonce from the explicit nonce and the sequence number, and the AAD per RFC 5246.</p>

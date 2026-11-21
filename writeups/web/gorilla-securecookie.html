@@ -248,7 +248,7 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Reading (and attacking) gorilla/securecookie sessions</h1><p class="tags"><span class="tag">go</span><span class="tag">gorilla</span><span class="tag">securecookie</span><span class="tag">hmac</span><span class="tag">session-forgery</span></p><div class="artmeta"><span></span><span>2 min read</span><span>475 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#wire-format">Wire format</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Reading (and attacking) gorilla/securecookie sessions</h1><p class="tags"><span class="tag">go</span><span class="tag">gorilla</span><span class="tag">securecookie</span><span class="tag">hmac</span><span class="tag">session-forgery</span></p><div class="artmeta"><span></span><span>4 min read</span><span>710 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#wire-format">Wire format</a></li>
 <li><a href="#what-the-tag-protects">What the tag protects</a></li>
 <li><a href="#attacking-the-key">Attacking the key</a></li>
 <li><a href="#practical-checklist-for-this-family">Practical checklist for this family</a></li>
@@ -256,6 +256,28 @@ pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margi
 <li><a href="#what-it-looks-like-in-practice">What it looks like in practice</a></li></ol></nav><h1 id="reading-gorillasecurecookie-sessions">Reading gorilla/securecookie sessions</h1>
 <p>Several challenges on this course run the same Go/Echo + <code>gorilla/sessions</code> skeleton, so it is worth
 knowing the cookie format cold.</p>
+<p><svg viewBox="0 0 720 210" width="100%" role="img" aria-label="gorilla/securecookie layout">
+<rect x="0" y="0" width="720" height="210" fill="none"/>
+<text x="0" y="16" fill="#8b949e" font-family="ui-monospace,monospace" font-size="12">SET-COOKIE: session=</text>
+<g font-family="ui-monospace,monospace" font-size="12">
+  <rect x="0" y="30" width="300" height="46" rx="8" fill="#141a23" stroke="#232c3a"/>
+  <text x="12" y="50" fill="#d2a8ff">base64url(</text>
+  <text x="86" y="50" fill="#e6edf3">ts</text><text x="112" y="50" fill="#6e7681">|</text>
+  <text x="126" y="50" fill="#e6edf3">payload</text><text x="188" y="50" fill="#6e7681">|</text>
+  <text x="202" y="50" fill="#7ee787">MAC</text><text x="236" y="50" fill="#d2a8ff">)</text>
+  <text x="12" y="68" fill="#6e7681">one decode → three pipe-separated fields</text></p>
+<p><rect x="0" y="92" width="100" height="38" rx="8" fill="#1a2230" stroke="#232c3a"/>
+  <text x="12" y="116" fill="#e6edf3">timestamp</text>
+  <rect x="112" y="92" width="300" height="38" rx="8" fill="#1a2230" stroke="#232c3a"/>
+  <text x="124" y="110" fill="#e6edf3">base64url(gob{"login":"…"})</text>
+  <text x="124" y="124" fill="#6e7681">readable — no encryption without a block key</text>
+  <rect x="424" y="92" width="120" height="38" rx="8" fill="#1a2230" stroke="#232c3a"/>
+  <text x="436" y="116" fill="#7ee787">MAC (32 B)</text></p>
+<p><path d="M560 92 L560 60 L430 60" stroke="#7ee787" stroke-dasharray="4 3" fill="none"/>
+  <text x="440" y="52" fill="#7ee787" font-size="11">HMAC-SHA256(key, "session|ts|payload")</text>
+  <text x="0" y="170" fill="#8b949e" font-size="12">Attack surface: the payload is visible, so a guessable key ⇒ full forgery.</text>
+  <text x="0" y="190" fill="#8b949e" font-size="12">cats: random key (rockyou × 14.3 M: no hit).   pillar: not securecookie at all (XOR, no MAC) ⇒ solved.</text>
+</g></svg></p>
 <h2 id="wire-format" id="wire-format">Wire format</h2>
 <p><code>SecureCookie.Encode</code> (v1.1.x) does:</p>
 <div class="codehilite"><pre><span></span><code><span class="nx">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">encode</span><span class="p">(</span><span class="nx">gob_serialize</span><span class="p">(</span><span class="nx">value</span><span class="p">))</span><span class="w">                    </span><span class="c1">// base64url of the gob bytes</span>

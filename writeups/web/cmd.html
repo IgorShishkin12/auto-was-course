@@ -248,7 +248,7 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Network check — command injection</h1><p class="tags"><span class="tag">command-injection</span><span class="tag">waf-bypass</span><span class="tag">python-flask</span></p><div class="artmeta"><span>cmd.is-course.ru</span><span>1 min read</span><span>224 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Network check — command injection</h1><p class="tags"><span class="tag">command-injection</span><span class="tag">waf-bypass</span><span class="tag">python-flask</span></p><div class="artmeta"><span>cmd.is-course.ru</span><span>1 min read</span><span>248 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
 <li><a href="#recon">Recon</a></li>
 <li><a href="#exploitation">Exploitation</a></li>
 <li><a href="#notes-on-the-filter">Notes on the filter</a></li>
@@ -275,8 +275,17 @@ the <em>client</em> dictates the command line. Posting an arbitrary <code>comman
 <div class="codehilite"><pre><span></span><code>YDS{…redacted…}
 </code></pre></div>
 
-<p>The working directory is <code>/app</code> and contains <code>app.py</code>, <code>start.sh</code> and <code>flag_&lt;md5&gt;.txt</code>
-(the flag file is renamed per instance — use a glob, not a fixed name).</p>
+<p>The working directory is <code>/home/app</code> (not <code>/app</code>) and contains <code>app.py</code>, <code>start.sh</code> and
+<code>flag_&lt;md5&gt;.txt</code> — the flag file is renamed per instance, so use a glob:</p>
+<div class="codehilite"><pre><span></span><code>$ pwd; ls -la
+/home/app
+-r--r--r-- 1 root root 2969 app.py
+-r--r--r-- 1 root root   69 flag_525d1d0910b9675d8fb77881b55aa729.txt
+-r-xr-xr-x 1 root root  549 start.sh
+</code></pre></div>
+
+<p>Verified live: <code>ls /app</code> returns <em>No such file or directory</em>, which is a useful reminder that writeups
+must be re-run, not remembered.</p>
 <h2 id="notes-on-the-filter" id="notes-on-the-filter">Notes on the filter</h2>
 <p>A naive WAF rejects <code>$(...)</code> with <code>HACKING DETECTED</code> and backticks likewise, but plain <code>;</code>
 command chaining goes straight through. <code>command</code> is checked against an allowlist of the four
