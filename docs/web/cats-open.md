@@ -27,6 +27,26 @@ executes JavaScript, and fetches images** — but it also:
 which removes every CSRF primitive at once. The remaining lever, stored XSS inside the admin's page,
 does not exist because the feedback text is never rendered as HTML.
 
+<svg viewBox="0 0 760 210" width="100%" role="img" aria-label="cats: four doors, all closed">
+<g font-family="ui-monospace,monospace" font-size="12">
+  <text x="0" y="16" fill="#7ee787">GOAL: make the bot's session read login == "admin"</text>
+  <g fill="#141a23" stroke="#232c3a">
+    <rect x="0" y="34" width="180" height="76" rx="9"/>
+    <rect x="196" y="34" width="180" height="76" rx="9"/>
+    <rect x="392" y="34" width="180" height="76" rx="9"/>
+    <rect x="588" y="34" width="164" height="76" rx="9"/>
+  </g>
+  <g fill="#e6edf3">
+    <text x="12" y="56">1. CSRF</text><text x="12" y="74" fill="#ff7b72">third-party cookies</text><text x="12" y="90" fill="#6e7681">blocked; navigations</text><text x="12" y="104" fill="#6e7681">never complete</text>
+    <text x="208" y="56">2. stored XSS</text><text x="208" y="74" fill="#ff7b72">feedback not</text><text x="208" y="90" fill="#6e7681">rendered (path-</text><text x="208" y="104" fill="#6e7681">topic beacons: none)</text>
+    <text x="404" y="56">3. forge session</text><text x="404" y="74" fill="#ff7b72">random HMAC key</text><text x="404" y="90" fill="#6e7681">rockyou 14.3 M:</text><text x="404" y="104" fill="#6e7681">no hit</text>
+    <text x="600" y="56">4. go anonymous</text><text x="600" y="74" fill="#ff7b72">flag gated on</text><text x="600" y="90" fill="#6e7681">login == admin</text><text x="600" y="104" fill="#6e7681">only</text>
+  </g>
+  <text x="0" y="140" fill="#8b949e">Bot facts that close the doors: page dies in ~150 ms · JS runs but no navigation lands ·</text>
+  <text x="0" y="158" fill="#8b949e">Set-Cookie from a cross-site login is not stored · extractor keeps the URL, drops the query.</text>
+  <text x="0" y="186" fill="#f0883e">Conclusion: unsolvable from outside until the bot's profile changes (login, persistent profile, 3PC allowed).</text>
+</g></svg>
+
 ## 1. The application
 
 Go + Echo (`{"message":"Not Found"}` on unknown routes), `gorilla/sessions` client-side sessions, nginx

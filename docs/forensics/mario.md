@@ -46,6 +46,32 @@ Each record's nonce is `fixed_iv(4) || explicit_nonce(8)` taken from the record 
 `seq_num(8) || type(1) || version(2) || length(2)` — the sequence number is what makes a replayed or
 out-of-order record fail to decrypt, and it is the usual reason a home-made decryptor "almost works".
 
+<svg viewBox="0 0 760 180" width="100%" role="img" aria-label="mario attack chain">
+<g font-family="ui-monospace,monospace" font-size="11.5">
+  <g fill="#141a23" stroke="#232c3a">
+    <rect x="0" y="40" width="150" height="54" rx="9"/>
+    <rect x="170" y="40" width="150" height="54" rx="9"/>
+    <rect x="340" y="40" width="150" height="54" rx="9"/>
+    <rect x="510" y="40" width="120" height="54" rx="9"/>
+    <rect x="650" y="40" width="100" height="54" rx="9"/>
+  </g>
+  <g fill="#e6edf3">
+    <text x="12" y="60">theme cookie</text><text x="12" y="78" fill="#6e7681">../../etc/nginx/…</text>
+    <text x="182" y="60">path traversal</text><text x="182" y="78" fill="#6e7681">LFI in &lt;style&gt;</text>
+    <text x="352" y="60">nginx.conf</text><text x="352" y="78" fill="#6e7681">sslkeylog path</text>
+    <text x="522" y="60">sslkeys.log</text><text x="522" y="78" fill="#6e7681">CLIENT_RANDOM</text>
+    <text x="662" y="60">pcap</text><text x="662" y="78" fill="#6e7681">decrypted</text>
+  </g>
+  <g stroke="#7ee787" fill="none" marker-end="url(#a)">
+    <path d="M150 67 H168"/><path d="M320 67 H338"/><path d="M490 67 H508"/><path d="M630 67 H648"/>
+  </g>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0 0 L8 4 L0 8 z" fill="#7ee787"/></marker></defs>
+  <text x="0" y="24" fill="#7ee787" font-size="11.5">the web app is the key escrow for a capture that is otherwise unbreakable</text>
+  <text x="0" y="130" fill="#8b949e">master secret → PRF(SHA-384) → client/server keys → AES-256-GCM records → GET /flag?action=…</text>
+  <text x="0" y="152" fill="#8b949e">same LFI also read /app/flag.txt, which only said "decrypt pcap" — the actual hint chain.</text>
+</g></svg>
+
 ## Decrypting
 `decrypt.py` implements the TLS 1.2 PRF (SHA-384) and AES-256-GCM record decryption, rebuilding the
 per-record nonce from the explicit nonce and the sequence number, and the AAD per RFC 5246.

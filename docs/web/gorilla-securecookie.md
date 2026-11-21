@@ -11,6 +11,31 @@ status: reference
 Several challenges on this course run the same Go/Echo + `gorilla/sessions` skeleton, so it is worth
 knowing the cookie format cold.
 
+<svg viewBox="0 0 720 210" width="100%" role="img" aria-label="gorilla/securecookie layout">
+<rect x="0" y="0" width="720" height="210" fill="none"/>
+<text x="0" y="16" fill="#8b949e" font-family="ui-monospace,monospace" font-size="12">SET-COOKIE: session=</text>
+<g font-family="ui-monospace,monospace" font-size="12">
+  <rect x="0" y="30" width="300" height="46" rx="8" fill="#141a23" stroke="#232c3a"/>
+  <text x="12" y="50" fill="#d2a8ff">base64url(</text>
+  <text x="86" y="50" fill="#e6edf3">ts</text><text x="112" y="50" fill="#6e7681">|</text>
+  <text x="126" y="50" fill="#e6edf3">payload</text><text x="188" y="50" fill="#6e7681">|</text>
+  <text x="202" y="50" fill="#7ee787">MAC</text><text x="236" y="50" fill="#d2a8ff">)</text>
+  <text x="12" y="68" fill="#6e7681">one decode → three pipe-separated fields</text>
+
+  <rect x="0" y="92" width="100" height="38" rx="8" fill="#1a2230" stroke="#232c3a"/>
+  <text x="12" y="116" fill="#e6edf3">timestamp</text>
+  <rect x="112" y="92" width="300" height="38" rx="8" fill="#1a2230" stroke="#232c3a"/>
+  <text x="124" y="110" fill="#e6edf3">base64url(gob{"login":"…"})</text>
+  <text x="124" y="124" fill="#6e7681">readable — no encryption without a block key</text>
+  <rect x="424" y="92" width="120" height="38" rx="8" fill="#1a2230" stroke="#232c3a"/>
+  <text x="436" y="116" fill="#7ee787">MAC (32 B)</text>
+
+  <path d="M560 92 L560 60 L430 60" stroke="#7ee787" stroke-dasharray="4 3" fill="none"/>
+  <text x="440" y="52" fill="#7ee787" font-size="11">HMAC-SHA256(key, "session|ts|payload")</text>
+  <text x="0" y="170" fill="#8b949e" font-size="12">Attack surface: the payload is visible, so a guessable key ⇒ full forgery.</text>
+  <text x="0" y="190" fill="#8b949e" font-size="12">cats: random key (rockyou × 14.3 M: no hit).   pillar: not securecookie at all (XOR, no MAC) ⇒ solved.</text>
+</g></svg>
+
 ## Wire format
 `SecureCookie.Encode` (v1.1.x) does:
 

