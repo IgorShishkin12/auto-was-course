@@ -248,10 +248,12 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Reading (and attacking) gorilla/securecookie sessions</h1><p class="tags"><span class="tag">go</span><span class="tag">gorilla</span><span class="tag">securecookie</span><span class="tag">hmac</span><span class="tag">session-forgery</span></p><div class="artmeta"><span></span><span>2 min read</span><span>300 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#wire-format">Wire format</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Reading (and attacking) gorilla/securecookie sessions</h1><p class="tags"><span class="tag">go</span><span class="tag">gorilla</span><span class="tag">securecookie</span><span class="tag">hmac</span><span class="tag">session-forgery</span></p><div class="artmeta"><span></span><span>2 min read</span><span>475 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#wire-format">Wire format</a></li>
 <li><a href="#what-the-tag-protects">What the tag protects</a></li>
 <li><a href="#attacking-the-key">Attacking the key</a></li>
-<li><a href="#practical-checklist-for-this-family">Practical checklist for this family</a></li></ol></nav><h1 id="reading-gorillasecurecookie-sessions">Reading gorilla/securecookie sessions</h1>
+<li><a href="#practical-checklist-for-this-family">Practical checklist for this family</a></li>
+<li><a href="#defensive-checklist">Defensive checklist</a></li>
+<li><a href="#what-it-looks-like-in-practice">What it looks like in practice</a></li></ol></nav><h1 id="reading-gorillasecurecookie-sessions">Reading gorilla/securecookie sessions</h1>
 <p>Several challenges on this course run the same Go/Echo + <code>gorilla/sessions</code> skeleton, so it is worth
 knowing the cookie format cold.</p>
 <h2 id="wire-format" id="wire-format">Wire format</h2>
@@ -309,7 +311,41 @@ python3<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;
 <ul>
 <li>If the payload ends in readable gob/JSON → signed-only cookie.</li>
 <li>If the three fields are missing → a different scheme (<code>itsdangerous</code>, JWT, custom).</li>
-</ul><nav class="pager"><a href="pillar.html"><div class="lbl">&larr; previous</div><div class="ttl">Pillar — cookie XOR, no authentication tag</div></a><a class="next" href="xxe-medium.html"><div class="lbl">next &rarr;</div><div class="ttl">XXE (medium) — out-of-band exfiltration</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+</ul>
+<h2 id="defensive-checklist" id="defensive-checklist">Defensive checklist</h2>
+<ul>
+<li>Call <code>securecookie.New(hashKey, blockKey)</code> with a <strong>random</strong> 32/64-byte <code>hashKey</code> and a 32-byte
+  <code>blockKey</code> — without the block key the payload is base64, not ciphertext, and any secret in it is
+  readable by every user.</li>
+<li>Load keys from a secret manager, not from a file that also ends up in a backup or a <code>sha256</code> action.</li>
+<li>Rotate keys with <code>MaxAge</code> (the timestamp is inside the MAC scope) and fail closed on decode errors.</li>
+<li>Keep the cookie to an opaque identifier if the state is sensitive — a server-side store removes the
+  whole class of "readable/forgeable session" bugs at the cost of one database lookup.</li>
+</ul>
+<h2 id="what-it-looks-like-in-practice" id="what-it-looks-like-in-practice">What it looks like in practice</h2>
+<table>
+<thead>
+<tr>
+<th>Deployment</th>
+<th>Cookie</th>
+<th>Attack</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>this course's <code>cats</code></td>
+<td>signed, random key, <code>SameSite=None</code></td>
+<td>key brute force: 14.3 M candidates, no hit → dead end</td>
+</tr>
+<tr>
+<td>this course's <code>pillar</code></td>
+<td>not securecookie at all: <code>base64(xor(login:ts, pad))</code></td>
+<td>forge <code>admin:&lt;ts&gt;</code>, sweep 256 pad bytes → solved</td>
+</tr>
+</tbody>
+</table>
+<p>The second row is why "it looks like a cookie" is not a threat model: read the bytes before you pick a
+tool.</p><nav class="pager"><a href="pillar.html"><div class="lbl">&larr; previous</div><div class="ttl">Pillar — cookie XOR, no authentication tag</div></a><a class="next" href="xxe-medium.html"><div class="lbl">next &rarr;</div><div class="ttl">XXE (medium) — out-of-band exfiltration</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');
