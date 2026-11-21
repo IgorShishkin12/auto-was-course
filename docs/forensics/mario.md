@@ -31,6 +31,21 @@ access_log /var/log/nginx/sslkeys.log;
 and that log holds `CLIENT_RANDOM <client_random> <master_secret>` for every connection, including the
 one in the pcap (`client_random c6b4081b0dd339fe...` → master `4fabc55b...5b3f0b`).
 
+## Deriving the traffic keys
+
+A `CLIENT_RANDOM` keylog line gives the **master secret**, not the keys — one PRF step is still needed:
+
+```python
+seed = b"key expansion" + server_random + client_random
+kb   = p_hash(master_secret, seed, 2*32 + 2*4 + 2*4, hashlib.sha384)   # SHA-384 for this suite
+client_key, server_key = kb[0:32], kb[32:64]
+ivs = kb[64:];  client_iv, server_iv = ivs[0:4], ivs[4:8]           # TLS 1.2 GCM: 4-byte fixed IV
+```
+
+Each record's nonce is `fixed_iv(4) || explicit_nonce(8)` taken from the record header, and the AAD is
+`seq_num(8) || type(1) || version(2) || length(2)` — the sequence number is what makes a replayed or
+out-of-order record fail to decrypt, and it is the usual reason a home-made decryptor "almost works".
+
 ## Decrypting
 `decrypt.py` implements the TLS 1.2 PRF (SHA-384) and AES-256-GCM record decryption, rebuilding the
 per-record nonce from the explicit nonce and the sequence number, and the AAD per RFC 5246.

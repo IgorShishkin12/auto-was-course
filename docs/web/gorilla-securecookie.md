@@ -71,3 +71,23 @@ PY
 ```
 * If the payload ends in readable gob/JSON → signed-only cookie.
 * If the three fields are missing → a different scheme (`itsdangerous`, JWT, custom).
+
+## Defensive checklist
+
+* Call `securecookie.New(hashKey, blockKey)` with a **random** 32/64-byte `hashKey` and a 32-byte
+  `blockKey` — without the block key the payload is base64, not ciphertext, and any secret in it is
+  readable by every user.
+* Load keys from a secret manager, not from a file that also ends up in a backup or a `sha256` action.
+* Rotate keys with `MaxAge` (the timestamp is inside the MAC scope) and fail closed on decode errors.
+* Keep the cookie to an opaque identifier if the state is sensitive — a server-side store removes the
+  whole class of "readable/forgeable session" bugs at the cost of one database lookup.
+
+## What it looks like in practice
+
+| Deployment | Cookie | Attack |
+|---|---|---|
+| this course's `cats` | signed, random key, `SameSite=None` | key brute force: 14.3 M candidates, no hit → dead end |
+| this course's `pillar` | not securecookie at all: `base64(xor(login:ts, pad))` | forge `admin:<ts>`, sweep 256 pad bytes → solved |
+
+The second row is why "it looks like a cookie" is not a threat model: read the bytes before you pick a
+tool.

@@ -248,27 +248,73 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>Hash extender — SHA-256 length extension</h1><p class="tags"><span class="tag">length-extension</span><span class="tag">sha256</span><span class="tag">mac-bypass</span></p><div class="artmeta"><span></span><span>1 min read</span><span>161 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#setup">Setup</a></li>
-<li><a href="#attack">Attack</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>Hash extender — SHA-256 length extension</h1><p class="tags"><span class="tag">length-extension</span><span class="tag">sha256</span><span class="tag">mac-bypass</span><span class="tag">hex-fields</span></p><div class="artmeta"><span>extender.is-course.ru</span><span>2 min read</span><span>324 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
+<li><a href="#why-it-works">Why it works</a></li>
+<li><a href="#recovering-the-secret-length">Recovering the secret length</a></li>
+<li><a href="#the-awkward-part-the-fields-are-hex">The awkward part: the fields are hex</a></li>
+<li><a href="#takeaway">Takeaway</a></li>
 <li><a href="#fix">Fix</a></li></ol></nav><h1 id="sha-256-length-extension">SHA-256 length extension</h1>
-<h2 id="setup" id="setup">Setup</h2>
-<p>The service authenticates a request with <code>SHA256(secret || message)</code> and compares the digest. Since
-SHA-256 is a Merkle–Damgård construction, knowing <code>H(secret||m)</code> and <code>len(secret||m)</code> is enough to
-compute <code>H(secret || m || padding || suffix)</code> without the secret.</p>
-<h2 id="attack" id="attack">Attack</h2>
-<ol>
-<li>Guess the secret length (brute-force 1..40: only one value produces a valid signature).</li>
-<li>Continue the hash state from the known digest with a forgeable suffix:
-   <code>sha256_padding(msg_len)</code> + <code>;admin=1</code> (any field your target parses).</li>
-<li>Send the new message with the recomputed digest.</li>
-</ol>
-<p>The tricky part here was that the target hex-encodes the <em>family</em> field, so the padding bytes had to
-be smuggled as ASCII hex inside that field — otherwise the parser rejected the request. Once the
-padding is hex-encoded the length bookkeeping still lines up (the server hex-decodes before hashing).</p>
-<p>Result: <code>YDS{…redacted…}</code></p>
+<h2 id="tldr" id="tldr">TL;DR</h2>
+<p>The session cookie is <code>login:name:family:MAC</code>, where</p>
+<div class="codehilite"><pre><span></span><code>MAC = SHA256(secret || name || ":" || family || ":" || login)
+</code></pre></div>
+
+<p>— a <em>prefix</em> MAC, not HMAC. Knowing one valid <code>(message, MAC)</code> pair, we can compute a valid MAC for
+<code>message || glue || ":admin"</code> without the secret, which flips the trailing field to <code>admin</code>.</p>
+<h2 id="why-it-works" id="why-it-works">Why it works</h2>
+<p>SHA-256 is a Merkle–Damgård hash: <code>H(m)</code> is the final chaining state after processing <code>m</code> in 64-byte
+blocks. If you are handed that state, you can keep hashing as if you had processed <code>m</code> yourself, so</p>
+<div class="codehilite"><pre><span></span><code>H(secret||m||padding(len(secret||m))||suffix)
+</code></pre></div>
+
+<p>is computable from <code>H(secret||m)</code> and the <em>length</em> of <code>secret||m</code>. The glue is the MD padding of the
+original message — a specific blob starting with <code>0x80</code>, full of zero bytes, ending with the bit length.
+Nobody validates that the message is well-formed, so anything appended after the glue is hashed as part
+of the same message.</p>
+<h2 id="recovering-the-secret-length" id="recovering-the-secret-length">Recovering the secret length</h2>
+<p>The secret is 32 bytes here, but guessing costs nothing: try lengths 1…64, extend for each, and keep the
+one whose MAC the server accepts (or, offline, the one whose digest matches a pair you already have).</p>
+<h2 id="the-awkward-part-the-fields-are-hex" id="the-awkward-part-the-fields-are-hex">The awkward part: the fields are hex</h2>
+<p>The cookie is <code>hex(login):hex(name):hex(family):hex(mac)</code>. The server hex-decodes each field and then
+concatenates, so the glue bytes (which include <code>0x80</code>, <code>0x00</code> and the length) are transmitted as plain
+hex — no escaping needed. What <em>does</em> need care is the reconstruction: after extending, the new message
+must still split into exactly three fields, with the last one reading <code>admin</code>.</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">shaext</span><span class="w"> </span><span class="kn">import</span> <span class="n">extend</span><span class="p">,</span> <span class="n">pad</span>
+
+<span class="n">raw</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">cookie</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+<span class="n">lh</span><span class="p">,</span> <span class="n">nh</span><span class="p">,</span> <span class="n">fh</span><span class="p">,</span> <span class="n">sig</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+<span class="n">name</span><span class="p">,</span> <span class="n">fam</span><span class="p">,</span> <span class="n">lg</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">nh</span><span class="p">),</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">fh</span><span class="p">),</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">lh</span><span class="p">)</span>
+<span class="n">SECLEN</span> <span class="o">=</span> <span class="mi">32</span>
+<span class="n">M</span> <span class="o">=</span> <span class="n">name</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">":"</span> <span class="o">+</span> <span class="n">fam</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">":"</span> <span class="o">+</span> <span class="n">lg</span>                      <span class="c1"># the message the server MACs</span>
+<span class="n">Y</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">":admin"</span>
+
+<span class="n">nd</span> <span class="o">=</span> <span class="n">extend</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="n">sig</span><span class="p">),</span> <span class="n">SECLEN</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">),</span> <span class="n">Y</span><span class="p">)</span>    <span class="c1"># forged digest</span>
+<span class="n">E</span>  <span class="o">=</span> <span class="n">M</span> <span class="o">+</span> <span class="n">pad</span><span class="p">(</span><span class="n">SECLEN</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">M</span><span class="p">))</span> <span class="o">+</span> <span class="n">Y</span>                      <span class="c1"># forged message</span>
+<span class="k">assert</span> <span class="n">E</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="sa">b</span><span class="s2">":admin"</span><span class="p">)</span>
+
+<span class="n">login_new</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">"admin"</span>
+<span class="n">name_new</span>  <span class="o">=</span> <span class="n">E</span><span class="p">[:</span><span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)]</span>
+<span class="n">fam_new</span>   <span class="o">=</span> <span class="n">E</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">E</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">Y</span><span class="p">)]</span>
+<span class="k">assert</span> <span class="n">name_new</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">":"</span> <span class="o">+</span> <span class="n">fam_new</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">":"</span> <span class="o">+</span> <span class="n">login_new</span> <span class="o">==</span> <span class="n">E</span>
+
+<span class="n">cookie</span> <span class="o">=</span> <span class="s2">"</span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">"</span> <span class="o">%</span> <span class="p">(</span><span class="n">login_new</span><span class="o">.</span><span class="n">hex</span><span class="p">(),</span> <span class="n">name_new</span><span class="o">.</span><span class="n">hex</span><span class="p">(),</span> <span class="n">fam_new</span><span class="o">.</span><span class="n">hex</span><span class="p">(),</span> <span class="n">nd</span><span class="o">.</span><span class="n">hex</span><span class="p">())</span>
+<span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">BASE</span> <span class="o">+</span> <span class="s2">"/"</span><span class="p">,</span> <span class="n">cookies</span><span class="o">=</span><span class="p">{</span><span class="s2">"session"</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">cookie</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">()})</span>
+</code></pre></div>
+
+<p>The response greets <code>Welcome, admin!</code> and prints the flag:</p>
+<div class="codehilite"><pre><span></span><code>YDS{…redacted…}
+</code></pre></div>
+
+<h2 id="takeaway" id="takeaway">Takeaway</h2>
+<p><code>SHA256(key || message)</code> is not a MAC. The attack works on any Merkle–Damgård hash without a final
+length-masking step (MD5, SHA-1, SHA-256, SHA-512); SHA-3 and BLAKE2 are immune because their output is
+not the full internal state.</p>
 <h2 id="fix" id="fix">Fix</h2>
-<p><code>HMAC-SHA256(key, message)</code> (or SHA-3/BLAKE2, which are not length-extendable). Prefix-MAC is never a
-MAC.</p><nav class="pager"><a href="jwt-confusion.html"><div class="lbl">&larr; previous</div><div class="ttl">Confusion — recover the RSA modulus, then sign HS256 with it</div></a><a class="next" href="jwt-none.html"><div class="lbl">next &rarr;</div><div class="ttl">None shall pass — JWT alg:none</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+<div class="codehilite"><pre><span></span><code>HMAC-SHA256(key, message)          # or SHA-3/BLAKE2, or a keyed AEAD
+</code></pre></div>
+
+<p>If you must build your own construction, hash <code>SHA256(key || SHA256(key || message))</code> — but do not;
+use HMAC.</p><nav class="pager"><a href="jwt-confusion.html"><div class="lbl">&larr; previous</div><div class="ttl">Confusion — recover the RSA modulus, then sign HS256 with it</div></a><a class="next" href="jwt-none.html"><div class="lbl">next &rarr;</div><div class="ttl">None shall pass — JWT alg:none</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');

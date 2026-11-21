@@ -248,12 +248,14 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc" class="on">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#misc">Misc</a></div><h1>Methodology — how these challenges were approached</h1><p class="tags"><span class="tag">methodology</span><span class="tag">recon</span><span class="tag">checklist</span></p><div class="artmeta"><span></span><span>2 min read</span><span>329 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#1-recon-before-exploitation">1. Recon before exploitation</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc" class="on">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#misc">Misc</a></div><h1>Methodology — how these challenges were approached</h1><p class="tags"><span class="tag">methodology</span><span class="tag">recon</span><span class="tag">checklist</span></p><div class="artmeta"><span></span><span>3 min read</span><span>620 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#1-recon-before-exploitation">1. Recon before exploitation</a></li>
 <li><a href="#2-read-the-app-not-the-payload-list">2. Read the app, not the payload list</a></li>
 <li><a href="#3-measure-dont-assume">3. Measure, don&#x27;t assume</a></li>
 <li><a href="#4-when-a-hypothesis-fails-falsify-it-properly">4. When a hypothesis fails, falsify it properly</a></li>
 <li><a href="#5-offline-beats-online">5. Offline beats online</a></li>
-<li><a href="#6-write-it-down-while-it-is-fresh">6. Write it down while it is fresh</a></li></ol></nav><h1 id="methodology">Methodology</h1>
+<li><a href="#6-write-it-down-while-it-is-fresh">6. Write it down while it is fresh</a></li>
+<li><a href="#7-verify-your-instruments-first">7. Verify your instruments first</a></li>
+<li><a href="#8-negative-results-are-deliverables">8. Negative results are deliverables</a></li></ol></nav><h1 id="methodology">Methodology</h1>
 <p>A short, honest description of the loop that produced the writeups in this repo.</p>
 <h2 id="1-recon-before-exploitation" id="1-recon-before-exploitation">1. Recon before exploitation</h2>
 <ul>
@@ -286,7 +288,56 @@ GF(2) linear solving instead of deobfuscating 18 KB of OLLVM dispatcher, TLS rec
 recovered master secret.</p>
 <h2 id="6-write-it-down-while-it-is-fresh" id="6-write-it-down-while-it-is-fresh">6. Write it down while it is fresh</h2>
 <p>Every writeup here lists: the sink, the minimal proof, the flag-bearing step (redacted) and the fix.
-Flags are deliberately omitted; the reasoning is the deliverable.</p><nav class="pager"><a href="gdb-antics.html"><div class="lbl">&larr; previous</div><div class="ttl">gdb — anti-debug + self-decrypting payload</div></a><a class="next" href="superprivate.html"><div class="lbl">next &rarr;</div><div class="ttl">SuperPrivate — exported activity, local exploit</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+Flags are deliberately omitted; the reasoning is the deliverable.</p>
+<h2 id="7-verify-your-instruments-first" id="7-verify-your-instruments-first">7. Verify your instruments first</h2>
+<p>Four hours on the <code>cats</code> challenge were spent chasing a target that was behaving perfectly; the
+measuring equipment was broken. Every one of these mistakes is easy to repeat.</p>
+<table>
+<thead>
+<tr>
+<th>Instrument</th>
+<th>What it told us</th>
+<th>What was actually true</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>webhook.site</code> beacon</td>
+<td>"the bot stopped visiting"</td>
+<td>webhook.site had silently stopped recording; the bot was fine</td>
+</tr>
+<tr>
+<td><code>new Image().src = url</code></td>
+<td>"the bot no longer runs JavaScript"</td>
+<td>the object was garbage-collected before the request was issued; a DOM-attached <code>&lt;img&gt;</code> fired immediately</td>
+</tr>
+<tr>
+<td>timing <code>POST /settings</code> from the bot</td>
+<td>"15 ms vs 11 ms ⇒ anonymous"</td>
+<td>the app hashes <strong>fast</strong> (153 ms authenticated vs 154 ms anonymous on warm connections); the oracle could not distinguish anything</td>
+</tr>
+<tr>
+<td>resubmitting <code>page.html?v=1…v=9</code></td>
+<td>"the bot ignores new URLs"</td>
+<td>dedup is by path; a genuinely new path was fetched within 12 s</td>
+</tr>
+</tbody>
+</table>
+<p>The rules that follow:</p>
+<ol>
+<li><strong>Send one request you control through your sink</strong> before you trust any silence.</li>
+<li><strong>Beacons must be attached to the document</strong> (or use <code>navigator.sendBeacon</code>, which also survives
+   navigation). Anything that can be collected is not a beacon.</li>
+<li><strong>Calibrate an oracle on both branches from your own machine</strong>, with warm connections, before you
+   read anything into the target's numbers.</li>
+<li><strong>One variable per experiment.</strong> When a page is destroyed in 150 ms, a <code>setTimeout</code> test measures the
+   timeout, not the browser.</li>
+</ol>
+<h2 id="8-negative-results-are-deliverables" id="8-negative-results-are-deliverables">8. Negative results are deliverables</h2>
+<p>If the last hypothesis dies, write down <em>why</em>: the exact payload, the exact observation, and what would
+have to change for the attack to work. The <code>cats</code> page is that kind of document — it is more useful to
+the organisers than a lucky flag would have been, and it stops the next person from repeating the same
+six hours.</p><nav class="pager"><a href="gdb-antics.html"><div class="lbl">&larr; previous</div><div class="ttl">gdb — anti-debug + self-decrypting payload</div></a><a class="next" href="superprivate.html"><div class="lbl">next &rarr;</div><div class="ttl">SuperPrivate — exported activity, local exploit</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');
