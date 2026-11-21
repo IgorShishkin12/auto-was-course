@@ -277,7 +277,7 @@ ciphertext blocks — that is the whole attack.</p>
 <p>The recovered "secret" is the flag.</p>
 <h2 id="fix" id="fix">Fix</h2>
 <p>Use a random IV per message with CBC/CTR, or better an AEAD (AES-GCM/ChaCha20-Poly1305) — and never
-concatenate attacker input with a secret.</p><nav class="pager"><a href="xxe-medium.html"><div class="lbl">&larr; previous</div><div class="ttl">XXE (medium) — out-of-band exfiltration</div></a><a class="next" href="jwt-confusion.html"><div class="lbl">next &rarr;</div><div class="ttl">Confusion — RS256→HS256 key confusion</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+concatenate attacker input with a secret.</p><nav class="pager"><a href="xxe-medium.html"><div class="lbl">&larr; previous</div><div class="ttl">XXE (medium) — out-of-band exfiltration</div></a><a class="next" href="jwt-confusion.html"><div class="lbl">next &rarr;</div><div class="ttl">Confusion — recover the RSA modulus, then sign HS256 with it</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');

