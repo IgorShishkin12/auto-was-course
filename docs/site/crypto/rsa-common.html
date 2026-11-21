@@ -248,29 +248,69 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>RSA: a lot in common</h1><p class="tags"><span class="tag">rsa</span><span class="tag">common-modulus</span><span class="tag">gcd</span></p><div class="artmeta"><span></span><span>1 min read</span><span>106 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
-<li><a href="#steps">Steps</a></li>
-<li><a href="#why-this-is-a-classic">Why this is a classic</a></li></ol></nav><h1 id="rsa-a-lot-in-common">RSA: a lot in common</h1>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>RSA: a lot in common</h1><p class="tags"><span class="tag">rsa</span><span class="tag">shared-prime</span><span class="tag">gcd</span><span class="tag">factoring</span></p><div class="artmeta"><span>is-course.ru:7004 (TCP)</span><span>2 min read</span><span>309 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
+<li><a href="#the-service">The service</a></li>
+<li><a href="#the-attack">The attack</a></li>
+<li><a href="#why-this-is-a-classic">Why this is a classic</a></li>
+<li><a href="#fix">Fix</a></li></ol></nav><h1 id="rsa-a-lot-in-common">RSA: a lot in common</h1>
 <h2 id="tldr" id="tldr">TL;DR</h2>
-<p>Two RSA public keys share a modulus (<code>n1 == n2</code>) but use different exponents. Given two ciphertexts of
-the <strong>same plaintext</strong> under the same <code>n</code> with coprime exponents <code>e1, e2</code>, Bézout's identity recovers
-the plaintext without any factorisation:</p>
-<div class="codehilite"><pre><span></span><code>a*e1 + b*e2 = gcd(e1,e2) = 1
-m = c1^a * c2^b (mod n)      # negative exponents =&gt; modular inverse
+<p>The service ("menu, pick an option") generates a <strong>fresh 2048-bit RSA keypair for every session</strong> but
+draws its primes from a pool small enough that two keys collide. Two moduli that share a prime factor
+fall to a single <code>gcd</code> — no factorisation, no maths beyond Euclid. The flag is the plaintext of a
+ciphertext produced under one of the two keys.</p>
+<h2 id="the-service" id="the-service">The service</h2>
+<div class="codehilite"><pre><span></span><code>$ nc is-course.ru 7004
+n = &lt;2048-bit decimal&gt;
+e = 65537
+encrypted message = &lt;hex&gt;
+
+Menu:
+1. encrypt
+2. ...
+3. reset (new keypair)
 </code></pre></div>
 
-<h2 id="steps" id="steps">Steps</h2>
+<p>Option 3 re-keys the session; option 1 lets you encrypt an arbitrary message and prints the new <code>n</code>,
+<code>e</code> and the ciphertext — which is how you harvest moduli cheaply.</p>
+<h2 id="the-attack" id="the-attack">The attack</h2>
 <div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">math</span><span class="w"> </span><span class="kn">import</span> <span class="n">gcd</span>
-<span class="n">g</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">egcd</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)</span>                    <span class="c1"># a*e1 + b*e2 = 1</span>
-<span class="n">m</span> <span class="o">=</span> <span class="p">(</span><span class="nb">pow</span><span class="p">(</span><span class="n">c1</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="nb">pow</span><span class="p">(</span><span class="n">c2</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">n</span><span class="p">))</span> <span class="o">%</span> <span class="n">n</span>   <span class="c1"># handle a&lt;0 with inverse(c1, n)**(-a)</span>
-<span class="nb">print</span><span class="p">(</span><span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="n">m</span><span class="p">)[</span><span class="mi">2</span><span class="p">:]))</span>
+
+<span class="n">n0</span><span class="p">,</span> <span class="n">e0</span><span class="p">,</span> <span class="n">c0</span> <span class="o">=</span> <span class="n">parse</span><span class="p">(</span><span class="n">banner</span><span class="p">)</span>        <span class="c1"># the key that holds the encrypted flag</span>
+<span class="n">n1</span> <span class="o">=</span> <span class="n">encrypt_and_read_n</span><span class="p">()</span>          <span class="c1"># after one reset</span>
+<span class="n">n2</span> <span class="o">=</span> <span class="n">encrypt_and_read_n</span><span class="p">()</span>          <span class="c1"># after a second reset</span>
+
+<span class="n">p</span> <span class="o">=</span> <span class="n">gcd</span><span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">)</span>                    <span class="c1"># shared prime, usually 1024 bits</span>
+<span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">):</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">n1</span> <span class="o">//</span> <span class="n">p</span>                    <span class="c1"># both keys are broken, not just one</span>
 </code></pre></div>
 
-<p>Recovered message: <code>L_do_you_know_that_gods_of_death_only_eat_apples_...</code></p>
+<p>Once a modulus is factored, RSA is invertible:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">factor_and_decrypt</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">p</span><span class="p">):</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">n</span> <span class="o">//</span> <span class="n">p</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="nb">pow</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">q</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">pow</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">((</span><span class="n">n</span><span class="o">.</span><span class="n">bit_length</span><span class="p">()</span> <span class="o">+</span> <span class="mi">7</span><span class="p">)</span> <span class="o">//</span> <span class="mi">8</span><span class="p">,</span> <span class="s2">"big"</span><span class="p">)</span>
+
+<span class="n">msg</span> <span class="o">=</span> <span class="n">factor_and_decrypt</span><span class="p">(</span><span class="n">n0</span><span class="p">,</span> <span class="n">e0</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">gcd</span><span class="p">(</span><span class="n">n1</span><span class="p">,</span> <span class="n">n2</span><span class="p">))</span>   <span class="c1"># if n0 shares that prime</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+</code></pre></div>
+
+<p>If the flag's key does not share with the first pair, keep resetting: with a deliberately small prime
+pool a collision appears within a handful of keys. The recovered plaintext is the flag:</p>
+<div class="codehilite"><pre><span></span><code>YDS{…redacted…}
+</code></pre></div>
+
 <h2 id="why-this-is-a-classic" id="why-this-is-a-classic">Why this is a classic</h2>
-<p>RSA does not hide the message; with a small exponent and no padding, the same plaintext encrypted
-under several keys is a linear-algebra problem. Real implementations must use OAEP padding and must
-never reuse a modulus across keys/tenants.</p><nav class="pager"><a href="jwt-none.html"><div class="lbl">&larr; previous</div><div class="ttl">None shall pass — JWT alg:none</div></a><a class="next" href="local-types.html"><div class="lbl">next &rarr;</div><div class="ttl">Local types — wire protocol RE + type confusion</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+<p>RSA's security rests entirely on <code>N = p·q</code> being hard to factor. Nothing about that argument survives
+if the same <code>p</code> is reused across keys: <code>gcd(N1, N2)</code> is computed in microseconds and breaks <strong>both</strong>
+keys. The two standard ways people get this wrong are (a) a shared prime pool / weak RNG at key
+generation, and (b) reusing a modulus across tenants with different exponents (the <em>common modulus</em>
+attack — <code>a·e1 + b·e2 = 1</code> via Bézout, also seen in this competition family).</p>
+<h2 id="fix" id="fix">Fix</h2>
+<p>Generate keys with a CSPRNG (<code>crypto/rand</code>) and never share primes between keys; if you must rotate
+keys, prove they are coprime (<code>gcd(n_i, n_j) == 1</code>) before deployment — a handful of lines in a
+deploy-time check would have caught this. And use OAEP padding: with padding, a factored modulus is
+still the end of the story, but the challenge's raw-textbook encryption also allows related-message
+attacks.</p><nav class="pager"><a href="jwt-none.html"><div class="lbl">&larr; previous</div><div class="ttl">None shall pass — JWT alg:none</div></a><a class="next" href="local-types.html"><div class="lbl">next &rarr;</div><div class="ttl">Local types — wire protocol RE + type confusion</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');

@@ -268,7 +268,7 @@ padding is hex-encoded the length bookkeeping still lines up (the server hex-dec
 <p>Result: <code>YDS{…redacted…}</code></p>
 <h2 id="fix" id="fix">Fix</h2>
 <p><code>HMAC-SHA256(key, message)</code> (or SHA-3/BLAKE2, which are not length-extendable). Prefix-MAC is never a
-MAC.</p><nav class="pager"><a href="jwt-confusion.html"><div class="lbl">&larr; previous</div><div class="ttl">Confusion — RS256→HS256 key confusion</div></a><a class="next" href="jwt-none.html"><div class="lbl">next &rarr;</div><div class="ttl">None shall pass — JWT alg:none</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+MAC.</p><nav class="pager"><a href="jwt-confusion.html"><div class="lbl">&larr; previous</div><div class="ttl">Confusion — recover the RSA modulus, then sign HS256 with it</div></a><a class="next" href="jwt-none.html"><div class="lbl">next &rarr;</div><div class="ttl">None shall pass — JWT alg:none</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');

