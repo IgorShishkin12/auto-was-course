@@ -3,6 +3,8 @@ title: "Moodquery — HMAC key confusion + filter bypass"
 category: Web
 host: moodquery.is-course.ru
 tags: [hmac, key-confusion, path-filter, root-signature]
+technique: "HMAC key pre-hash leaked through an unfiltered `sha256` action"
+status: solved
 ---
 
 # Moodquery

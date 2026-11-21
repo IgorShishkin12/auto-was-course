@@ -3,6 +3,8 @@ title: "Android WebView series (5 tasks)"
 category: Mobile
 artifact: app-release.apk (com.yandex.shad.homework)
 tags: [webview, addJavascriptInterface, deeplink, content-provider, exported-activity]
+technique: "`addJavascriptInterface` + exported components"
+status: solved
 ---
 
 # Android WebView series

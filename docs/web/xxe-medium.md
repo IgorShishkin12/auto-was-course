@@ -3,6 +3,8 @@ title: "XXE (medium) — out-of-band exfiltration"
 category: Web
 host: xxe-medium.is-course.ru
 tags: [xxe, oob, docx, dtd]
+technique: "external DTD, OOB exfiltration through a second request"
+status: solved
 ---
 
 # XXE — out-of-band

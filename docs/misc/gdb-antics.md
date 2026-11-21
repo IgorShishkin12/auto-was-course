@@ -3,6 +3,8 @@ title: "gdb — anti-debug + self-decrypting payload"
 category: Reverse
 artifact: gdb (22 KB ELF)
 tags: [anti-debug, ptrace, ld-preload, unpacking]
+technique: "anti-debug tricks bypassed"
+status: solved
 ---
 
 # gdb

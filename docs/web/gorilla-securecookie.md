@@ -2,6 +2,8 @@
 title: "Reading (and attacking) gorilla/securecookie sessions"
 category: Web
 tags: [go, gorilla, securecookie, hmac, session-forgery]
+technique: "reference: securecookie wire format & key space"
+status: reference
 ---
 
 # Reading gorilla/securecookie sessions

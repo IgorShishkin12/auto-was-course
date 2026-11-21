@@ -4,6 +4,8 @@ category: Web
 host: unserialize.is-course.ru
 points: 100
 tags: [pickle, rce, flask, deserialization]
+technique: "`pickle.loads` on user input → RCE → flag in the error echo"
+status: solved
 ---
 
 # Clicker

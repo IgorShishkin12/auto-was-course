@@ -2,6 +2,8 @@
 title: "Hash extender — SHA-256 length extension"
 category: Crypto
 tags: [length-extension, sha256, mac-bypass]
+technique: "SHA-256 length extension on a prefix MAC"
+status: solved
 ---
 
 # SHA-256 length extension

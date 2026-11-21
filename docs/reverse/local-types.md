@@ -3,6 +3,8 @@ title: "Local types — wire protocol RE + type confusion"
 category: Reverse / Pwn
 host: is-course.ru:2600
 tags: [protocol-reversing, type-confusion, vtable, fnv1a]
+technique: "unchecked `TYPE` dispatch into a shared connection state"
+status: solved
 ---
 
 # Local types

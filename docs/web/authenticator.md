@@ -3,6 +3,8 @@ title: "Authenticator — CSR CN smuggling"
 category: Web
 host: authenticator.is-course.ru
 tags: [x509, csr, pkix, extra-names, mtls]
+technique: "cfssl `Names[].OID` smuggles a second CN (last wins)"
+status: solved
 ---
 
 # Authenticator

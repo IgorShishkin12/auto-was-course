@@ -2,6 +2,8 @@
 title: "simple — straight-line comparison checker"
 category: Reverse
 artifact: simple (ELF x86-64, not stripped)
+technique: "straight-line comparison checker"
+status: solved
 ---
 
 # simple

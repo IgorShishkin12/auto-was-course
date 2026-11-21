@@ -1,25 +1,35 @@
-# YDS CTF — writeups
+# YDS CTF writeups
 
-Solutions for the is-course.ru ("Безопасность информационных систем") challenges.
+Solutions for the *is-course.ru* competition (web, crypto, reverse, forensics, mobile), written up
+after the fact: what the challenge was, how it was solved, and how to fix it.
 
-**No flags are published here.** Each writeup describes the vulnerability, the exploitation path and
-the mitigation; the flag value itself is intentionally redacted.
+**Flags are intentionally omitted** from every page.
+
+## Layout
+
+```
+web/ crypto/ reverse/ forensics/ android/ misc/   Markdown sources (one file per writeup)
+build.py                                          static site generator
+site/                                             generated, self-contained HTML (open index.html)
+```
+
+## Build
+
+```bash
+pip install markdown pygments
+python3 build.py      # writes ./site
+```
+
+The output has no external dependencies: CSS, JS, the search index and the syntax highlighting are all
+inlined, so `site/index.html` works offline and from `file://`.
 
 ## Contents
 
 | Category | Writeups |
 |---|---|
-| Web | command injection (cmd), pickle RCE (unserialize), XXE OOB, cookie XOR (pillar), HMAC key confusion (moodquery), CSR CN smuggling (authenticator) |
-| Crypto | AES-ECB byte-at-a-time, RSA common modulus, JWT `alg:none`, RS256→HS256 confusion, SHA-256 length extension |
-| Reverse | `simple` (cmp chain), preload (OLLVM + GF(2)), local_types (protocol RE + type confusion) |
-| Forensics | mario (pcap + TLS keylog via LFI) |
-| Mobile | WebView series (5 tasks), SuperPrivate |
-
-Rendered version: `docs/index.html` (self-contained, no external assets).
-
-## Rebuild
-
-```bash
-pip install markdown
-python3 docs/build.py     # markdown -> docs/site
-```
+| Web | Authenticator (CSR CN smuggling), cats (admin-bot post-mortem), Clicker (pickle RCE), Moodquery (HMAC key confusion), Network check (command injection), Pillar (XOR cookie), XXE (OOB), gorilla/securecookie reference |
+| Crypto | AES-ECB byte-at-a-time, SHA-256 length extension, JWT algorithm confusion, JWT `alg:none`, RSA common modulus |
+| Reverse | Local types (wire protocol), Preload (OLLVM vs linear algebra), simple |
+| Forensics | Mario (pcap + TLS keylog via LFI) |
+| Mobile | Android WebView series (5 tasks) |
+| Misc | gdb antics, SuperPrivate, methodology |

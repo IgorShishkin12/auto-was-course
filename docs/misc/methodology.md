@@ -2,6 +2,8 @@
 title: "Methodology — how these challenges were approached"
 category: Misc
 tags: [methodology, recon, checklist]
+technique: "how these challenges were approached"
+status: reference
 ---
 
 # Methodology

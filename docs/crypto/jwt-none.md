@@ -3,6 +3,8 @@ title: "None shall pass — JWT alg:none"
 category: Crypto / Web
 host: none-shall-pass.is-course.ru
 tags: [jwt, alg-none, cve-2025-59685]
+technique: "`alg:none` unsigned token accepted"
+status: solved
 ---
 
 # None shall pass

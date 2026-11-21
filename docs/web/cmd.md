@@ -4,6 +4,8 @@ category: Web
 host: cmd.is-course.ru
 points: 100
 tags: [command-injection, waf-bypass, python-flask]
+technique: "unfiltered `dns-server` concatenated into a shell command"
+status: solved
 ---
 
 # Network check

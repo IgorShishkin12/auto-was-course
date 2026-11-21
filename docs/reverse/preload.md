@@ -2,6 +2,8 @@
 title: "Preload — OLLVM flattening beaten by linear algebra"
 category: Reverse
 tags: [ollvm, control-flow-flattening, emulation, gf2, unicorn]
+technique: "emulate `check`, prove it GF(2)-linear, solve by elimination"
+status: solved
 ---
 
 # Preload

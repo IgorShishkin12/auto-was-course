@@ -3,6 +3,8 @@ title: "Confusion — RS256→HS256 key confusion"
 category: Crypto / Web
 host: confusion.is-course.ru
 tags: [jwt, algorithm-confusion, public-key-as-hmac-secret]
+technique: "RS256→HS256 algorithm confusion (public key as HMAC secret)"
+status: solved
 ---
 
 # Confusion

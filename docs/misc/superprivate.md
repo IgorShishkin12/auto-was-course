@@ -3,6 +3,8 @@ title: "SuperPrivate — exported activity, local exploit"
 category: Mobile
 artifact: app-release.apk (com.yandex.shad.homework)
 tags: [android, exported-activity, adb, local-exploit]
+technique: "exported activity exposes the secret"
+status: solved
 ---
 
 # SuperPrivate

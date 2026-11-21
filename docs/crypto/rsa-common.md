@@ -2,6 +2,8 @@
 title: "RSA: a lot in common"
 category: Crypto
 tags: [rsa, common-modulus, gcd]
+technique: "shared modulus + Bézout (common-modulus attack)"
+status: solved
 ---
 
 # RSA: a lot in common

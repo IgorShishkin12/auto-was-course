@@ -3,6 +3,8 @@ title: "Pillar — cookie XOR, no authentication tag"
 category: Web
 host: pillar.is-course.ru
 tags: [cookies, xor, bit-flipping, auth-bypass]
+technique: "repeating-key XOR cookie, no MAC — forge `admin:<ts>`"
+status: solved
 ---
 
 # Pillar

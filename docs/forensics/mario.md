@@ -3,6 +3,8 @@ title: "Mario — pcap + TLS keylog via LFI"
 category: Forensics
 host: mario.is-course.ru
 tags: [pcap, tls-1.2, lfi, sslkeylog, aes-gcm]
+technique: "nginx `sslkeylog` leaked by an LFI → decrypt the pcap"
+status: solved
 ---
 
 # Mario

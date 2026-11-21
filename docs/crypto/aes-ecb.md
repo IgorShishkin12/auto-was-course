@@ -3,6 +3,8 @@ title: "AES ECB — byte-at-a-time"
 category: Crypto
 host: aes.is-course.ru
 tags: [aes, ecb, chosen-plaintext]
+technique: "byte-at-a-time ECB decryption"
+status: solved
 ---
 
 # AES ECB byte-at-a-time
