@@ -811,7 +811,7 @@ def _default_fit(p):
             'ntrack_z': 0, 'default': True}
 
 
-def predict_mask(p, zb_bias=-0.02):
+def predict_mask(p, zb_bias=-0.02, ret_arrays=False):
     """Full per-frame prediction. Returns (mask uint8, info dict)."""
     info = {}
     try:
@@ -874,4 +874,6 @@ def predict_mask(p, zb_bias=-0.02):
                        (zrel >= GATE_ZBFAR - 1e-9) &
                        (zrel <= GATE_ZTOP + 1e-9))
     info.update(fit)
+    if ret_arrays:
+        return inside.astype(np.uint8), info, lat, zrel
     return inside.astype(np.uint8), info

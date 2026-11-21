@@ -8,12 +8,15 @@ from tracklib import track_slices, fit_models, ring_profile_detections, \
     ransac_inliers, build_polyline, _default_fit
 
 def frame_points(p):
+    info = {}
     try:
         tracked, grade0 = track_slices(p)
         fit0 = fit_models(tracked, grade0, p)
     except Exception:
         tracked, grade0, fit0 = [], 0.0, {'ok': False}
+    info['grade0'] = float(grade0)
     if not fit0.get('ok'):
+        info['err'] = 1
         fit = _default_fit(p)
         allst = []
     else:
@@ -40,7 +43,7 @@ def frame_points(p):
     n = np.hypot(tx, ty) + 1e-12
     lat = (-(p[:, 0] - Xp[j]) * ty + (p[:, 1] - Yp[j]) * tx) / n
     zrel = p[:, 2] - (Zp[j] - 0.02)
-    return lat, zrel
+    return lat, zrel, info
 
 def main(dataroot, outpath):
     files = sorted(glob.glob(os.path.join(dataroot, '*.npz')))
@@ -55,12 +58,14 @@ def main(dataroot, outpath):
         for k in range(T):
             s, e = off[k], off[k + 1]
             p = pts[s:e]
-            frames.append((fi, k, e - s))
-            r = frame_points(p)
-            if r is None:
+            try:
+                lat, zrel, info = frame_points(p)
+            except Exception:
+                frames.append((fi, k, e - s, 2, 0.0))
                 gf += 1
                 continue
-            lat, zrel = r
+            frames.append((fi, k, e - s, int(info.get('err', 0)),
+                           float(info.get('grade0', 0.0))))
             # WIDE collection for operating-point search (v2+): lat to
             # 0.70, zrel from 0.10 (low objects/rails), X to 25, top 1.50
             m = (np.abs(lat) <= 0.70 + 1e-9) & (zrel >= 0.10 - 1e-9) & \
@@ -80,12 +85,15 @@ def main(dataroot, outpath):
                     o = int(io[i]) if l[i] == 1 else -1
                     g = grp_of[o] if o >= 0 else -1
                     recs.append((gf, float(lat[i]), float(zrel[i]),
-                                float(p[i, 0]), o, g))
+                                float(p[i, 0]), float(p[i, 1]),
+                                float(p[i, 2]), o, g))
             gf += 1
         print(f'{fi+1}/{len(files)} recs={len(recs)}', flush=True)
     recs = np.array(recs, dtype=[('gf', 'i4'), ('lat', 'f4'), ('zrel', 'f4'),
-                                 ('X', 'f4'), ('obj', 'i4'), ('grp', 'i2')])
-    frames = np.array(frames, dtype=[('fi', 'i4'), ('k', 'i4'), ('n', 'i4')])
+                                 ('X', 'f4'), ('Y', 'f4'), ('Z', 'f4'),
+                                 ('obj', 'i4'), ('grp', 'i2')])
+    frames = np.array(frames, dtype=[('fi', 'i4'), ('k', 'i4'), ('n', 'i4'),
+                                   ('err', 'i2'), ('g0', 'f4')])
     np.savez_compressed(outpath, recs=recs, frames=frames,
                         files=np.array([os.path.basename(f) for f in files]))
     print(f'saved {outpath}: {len(recs)} in-gate pts, {len(frames)} frames')
